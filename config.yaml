@@ -51,3 +51,36 @@ keywords:
   kedua: 4
   ketiga: 4
   terakhir: 4
+
+# ===== HOOK / OPENING =====
+hook:
+  enabled: true
+  duration: 5                    # durasi opening (detik, max 5)
+
+  # Sumber teks hook:
+  #   "manual"     -> pakai text_manual di bawah
+  #   "transcript" -> ambil kalimat pertama dari transkrip
+  #   "none"       -> gak ada teks hook
+  text_source: "transcript"
+
+  # Kalau text_source = "manual", pakai ini
+  text_manual: "TONTON SAMPE HABIS! 🔥"
+
+  # Apply ke semua klip atau cuma klip pertama?
+  apply_to: "all"                # "all" atau "first_only"
+
+  # Style teks hook
+  font_size: 80
+  font_color: "&H0000FFFF"       # kuning (BGR)
+  outline_color: "&H00000000"    # hitam
+  outline_size: 4
+  position: 8                    # 8=atas, 5=tengah, 2=bawah
+  margin_top: 200                # jarak dari atas (px)
+
+  # Background box (opsional)
+  box_enabled: true
+  box_color: "&H80000000"        # hitam transparan 50%
+  box_padding: 20                # padding dalam box (px)
+
+  # Output metadata (judul video)
+  save_title: true               # simpan judul ke file .txt

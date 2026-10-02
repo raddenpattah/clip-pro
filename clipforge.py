@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 from faster_whisper import WhisperModel
 from keyword_detector import find_keyword_hits, make_clips_from_hits
+from hook_builder import get_hook_text, write_hook_ass, save_title
 
 # ====== LOAD CONFIG ======
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
@@ -46,6 +47,9 @@ if _cfg:
     MARGIN_V = _cfg["output"]["margin_vertical"]
 
     KEYWORDS = _cfg["keywords"]
+
+    # Hook config
+    HOOK_CFG = _cfg.get("hook", {})
 else:
     # Fallback default
     CLIP_DURATION = 45
@@ -68,6 +72,7 @@ else:
     OUTLINE_SIZE = 6
     MARGIN_V = 400
     KEYWORDS = {}
+    HOOK_CFG = {"enabled": False}
 # =========================
 
 def run(cmd, silent=False):
@@ -148,14 +153,118 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         )
     Path(out_path).write_text("\n".join(lines), encoding="utf-8")
 
-def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir):
-    """Proses 1 klip: cut + reframe + burn subtitle"""
+def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, hook_cfg=None):
+    """Proses 1 klip: opening+hook + main content + subtitle."""
+    duration = clip_end - clip_start
+
+    # Cek apakah pakai hook
+    use_hook = hook_cfg and hook_cfg.get("enabled", False) and hook_cfg.get("_hook_text")
+
+    if not use_hook:
+        # === MODE LAMA: tanpa hook ===
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
+
+    # === MODE BARU: opening + main ===
+    hook_dur = hook_cfg.get("duration", 5)
+
+    # File temporer
+    hook_video = temp_dir / f"{out_path.stem}_hook.mp4"
+    main_video = temp_dir / f"{out_path.stem}_main.mp4"
+    hook_ass = temp_dir / f"{out_path.stem}_hook.ass"
+    list_file = temp_dir / f"{out_path.stem}_concat.txt"
+
+    # 1. Bikin .ass hook overlay
+    write_hook_ass(hook_cfg, hook_ass)
+
+    # 2. Render HOOK part (0-5s video + overlay text, TANPA subtitle)
+    hook_ass_escaped = str(hook_ass).replace("\\", "/").replace(":", "\\:")
+    vf_hook = (
+        f"crop=ih*9/16:ih,"
+        f"scale={OUTPUT_W}:{OUTPUT_H},"
+        f"ass='{hook_ass_escaped}'"
+    )
+    cmd_hook = [
+        "ffmpeg", "-y",
+        "-ss", "0",
+        "-to", f"{hook_dur}",
+        "-i", str(video_path),
+        "-vf", vf_hook,
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k",
+        str(hook_video),
+    ]
+    print(f"    🎣 Render hook: {hook_video.name} ({hook_dur}s)...")
+    r = run(cmd_hook, silent=True)
+    if r.returncode != 0:
+        print(f"    ⚠️  Gagal render hook, fallback ke mode lama")
+        print(r.stderr[-300:])
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
+
+    # 3. Render MAIN part (clip_start-clip_end + subtitle)
+    main_ass = temp_dir / f"{out_path.stem}_main.ass"
+    write_ass(words, clip_start, clip_end, main_ass)
+    main_ass_escaped = str(main_ass).replace("\\", "/").replace(":", "\\:")
+    vf_main = (
+        f"crop=ih*9/16:ih,"
+        f"scale={OUTPUT_W}:{OUTPUT_H},"
+        f"ass='{main_ass_escaped}'"
+    )
+    cmd_main = [
+        "ffmpeg", "-y",
+        "-ss", f"{clip_start:.2f}",
+        "-to", f"{clip_end:.2f}",
+        "-i", str(video_path),
+        "-vf", vf_main,
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k",
+        str(main_video),
+    ]
+    print(f"    🎬 Render main: {main_video.name} ({duration:.1f}s)...")
+    r = run(cmd_main, silent=True)
+    if r.returncode != 0:
+        print(f"    ⚠️  Gagal render main, fallback")
+        print(r.stderr[-300:])
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
+
+    # 4. Concat hook + main
+    list_file.write_text(
+        f"file '{hook_video.resolve()}'\nfile '{main_video.resolve()}'\n"
+    )
+    cmd_concat = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_file),
+        "-c", "copy",
+        "-movflags", "+faststart",
+        str(out_path),
+    ]
+    print(f"    🔗 Concat ke {out_path.name}...")
+    r = run(cmd_concat, silent=True)
+    if r.returncode != 0:
+        print(f"    ❌ Gagal concat")
+        print(r.stderr[-300:])
+        return False
+
+    # 5. Cleanup temp
+    for f in [hook_video, main_video, hook_ass, main_ass, list_file]:
+        try:
+            f.unlink()
+        except Exception:
+            pass
+
+    total = hook_dur + duration
+    print(f"    ✅ {out_path.name} ({total:.1f}s = {hook_dur}s hook + {duration:.1f}s main)")
+    return True
+
+
+def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir):
+    """Render 1 klip tanpa hook (mode lama)."""
     duration = clip_end - clip_start
     ass_path = temp_dir / f"{out_path.stem}.ass"
     write_ass(words, clip_start, clip_end, ass_path)
 
-    # FFmpeg: cut -> crop 9:16 -> scale -> burn subtitle
-    # Pakai ass filter dengan escape path
     ass_escaped = str(ass_path).replace("\\", "/").replace(":", "\\:")
     vf = (
         f"crop=ih*9/16:ih,"
@@ -249,13 +358,34 @@ def main():
 
     print(f"\n🎬 Akan render {len(clips)} klip\n")
 
+    # === HOOK GENERATION ===
+    hook_text = None
+    if HOOK_CFG.get("enabled", False):
+        hook_text = get_hook_text(HOOK_CFG, segments)
+        if hook_text:
+            print(f"🎣 Hook text: {hook_text}")
+            HOOK_CFG["_hook_text"] = hook_text
+
     # 5. Render tiap klip
     success = 0
     for i, (start, end) in enumerate(clips, 1):
         out_path = output_dir / f"{video.stem}_clip{i:02d}.mp4"
-        if process_clip(video, start, end, all_words, out_path, temp_dir):
+
+        # Hook hanya di klip pertama kalau apply_to = "first_only"
+        use_hook_this = True
+        if HOOK_CFG.get("apply_to") == "first_only" and i > 1:
+            use_hook_this = False
+
+        hook_for_clip = HOOK_CFG if use_hook_this else None
+
+        if process_clip(video, start, end, all_words, out_path, temp_dir, hook_cfg=hook_for_clip):
             print(f"    ✅ {out_path}")
             success += 1
+
+            # Simpen judul ke file .txt
+            if hook_for_clip and hook_for_clip.get("save_title"):
+                title_path = output_dir / f"{video.stem}_clip{i:02d}_title.txt"
+                save_title(hook_for_clip, title_path)
 
     print(f"\n🎉 Selesai! {success}/{len(clips)} klip di folder output/")
 
