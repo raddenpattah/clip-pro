@@ -6,20 +6,68 @@ import os
 import sys
 import json
 import subprocess
+import yaml
 from pathlib import Path
 from faster_whisper import WhisperModel
 from keyword_detector import find_keyword_hits, make_clips_from_hits
 
-# ====== KONFIGURASI ======
-CLIP_DURATION = 45          # detik per klip
-MAX_CLIPS = 5               # max klip per video
-WHISPER_MODEL = "base"      # tiny / base / small
-WHISPER_PATH = "models/whisper-tiny"  # fallback kalau ada lokal
-OUTPUT_W = 1080
-OUTPUT_H = 1920
-FONT = "Roboto"
-FONT_SIZE = 90
-INITIAL_PROMPT = "Video tutorial bahasa Indonesia. Istilah umum: AI, ChatGPT, TikTok, YouTube, affiliate, monetisasi, bisnis online, konten kreator, viral, algoritma, engagement, clickbait, hooks, call to action."
+# ====== LOAD CONFIG ======
+CONFIG_PATH = Path(__file__).parent / "config.yaml"
+
+def load_config():
+    if not CONFIG_PATH.exists():
+        print(f"⚠️  Config {CONFIG_PATH} gak ada, pakai default")
+        return None
+    with open(CONFIG_PATH, "r") as f:
+        return yaml.safe_load(f)
+
+_cfg = load_config()
+if _cfg:
+    CLIP_DURATION = _cfg["clip"]["duration"]
+    MIN_DURATION = _cfg["clip"]["min_duration"]
+    MAX_DURATION = _cfg["clip"]["max_duration"]
+    TOLERANCE = _cfg["clip"]["tolerance"]
+    CONTEXT_BEFORE = _cfg["clip"]["context_before"]
+    MAX_CLIPS = _cfg["clip"]["max_clips"]
+
+    WHISPER_MODEL = _cfg["whisper"]["model"]
+    WHISPER_LANG = _cfg["whisper"]["language"]
+    BEAM_SIZE = _cfg["whisper"]["beam_size"]
+    VAD_FILTER = _cfg["whisper"]["vad_filter"]
+    INITIAL_PROMPT = _cfg["whisper"]["initial_prompt"]
+
+    OUTPUT_W = _cfg["output"]["width"]
+    OUTPUT_H = _cfg["output"]["height"]
+    FONT = _cfg["output"]["font"]
+    FONT_SIZE = _cfg["output"]["font_size"]
+    FONT_COLOR = _cfg["output"]["font_color"]
+    OUTLINE_COLOR = _cfg["output"]["outline_color"]
+    OUTLINE_SIZE = _cfg["output"]["outline_size"]
+    MARGIN_V = _cfg["output"]["margin_vertical"]
+
+    KEYWORDS = _cfg["keywords"]
+else:
+    # Fallback default
+    CLIP_DURATION = 45
+    MIN_DURATION = 30
+    MAX_DURATION = 60
+    TOLERANCE = 5
+    CONTEXT_BEFORE = 5
+    MAX_CLIPS = 5
+    WHISPER_MODEL = "base"
+    WHISPER_LANG = "id"
+    BEAM_SIZE = 5
+    VAD_FILTER = True
+    INITIAL_PROMPT = ""
+    OUTPUT_W = 1080
+    OUTPUT_H = 1920
+    FONT = "Roboto"
+    FONT_SIZE = 90
+    FONT_COLOR = "&H00FFFFFF"
+    OUTLINE_COLOR = "&H00000000"
+    OUTLINE_SIZE = 6
+    MARGIN_V = 400
+    KEYWORDS = {}
 # =========================
 
 def run(cmd, silent=False):
@@ -42,9 +90,9 @@ def transcribe(video_path, model):
     print(f"🎙️  Transkripsi: {video_path.name}")
     segments, info = model.transcribe(
         str(video_path),
-        language="id",
-        beam_size=5,
-        vad_filter=True,
+        language=WHISPER_LANG,
+        beam_size=BEAM_SIZE,
+        vad_filter=VAD_FILTER,
         word_timestamps=True,
         initial_prompt=INITIAL_PROMPT,
     )
@@ -79,7 +127,7 @@ PlayResY: {OUTPUT_H}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: TikTok,{FONT},{FONT_SIZE},&H00FFFFFF,&H00000000,&H80000000,-1,0,1,6,3,2,50,50,400,1
+Style: TikTok,{FONT},{FONT_SIZE},{FONT_COLOR},{OUTLINE_COLOR},&H80000000,-1,0,1,{OUTLINE_SIZE},3,2,50,50,{MARGIN_V},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -176,7 +224,12 @@ def main():
     if hits:
         clip_dicts = make_clips_from_hits(
             hits, segments, total_dur,
-            target_duration=CLIP_DURATION, max_clips=MAX_CLIPS
+            target_duration=CLIP_DURATION,
+            max_clips=MAX_CLIPS,
+            context_before=CONTEXT_BEFORE,
+            min_duration=MIN_DURATION,
+            max_duration=MAX_DURATION,
+            tolerance=TOLERANCE,
         )
         clips = [(c["start"], c["end"]) for c in clip_dicts]
         print(f"✂️  Mode: KEYWORD-BASED")

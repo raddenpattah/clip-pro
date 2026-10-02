@@ -83,6 +83,10 @@ def make_clips_from_hits(
     total_duration: float,
     target_duration: int = TARGET_DURATION,
     max_clips: int = 5,
+    context_before: int = CONTEXT_BEFORE,
+    min_duration: int = MIN_DURATION,
+    max_duration: int = MAX_DURATION,
+    tolerance: int = TOLERANCE,
 ) -> List[Dict]:
     """Bikin clip ranges dengan GREEDY + SMART OVERLAP HANDLING.
     
@@ -99,13 +103,13 @@ def make_clips_from_hits(
         if len(clips) >= max_clips:
             break
 
-        start = max(0, h["time"] - CONTEXT_BEFORE)
+        start = max(0, h["time"] - context_before)
         target_end = start + target_duration
-        min_end = max(start + MIN_DURATION, target_end - TOLERANCE)
-        max_end = min(total_duration, start + MAX_DURATION, target_end + TOLERANCE)
+        min_end = max(start + min_duration, target_end - tolerance)
+        max_end = min(total_duration, start + max_duration, target_end + tolerance)
 
         # Kalau gak ada ruang (video abis), skip
-        if max_end - start < MIN_DURATION:
+        if max_end - start < min_duration:
             continue
 
         end = find_natural_end(segments, target_end, min_end, max_end)

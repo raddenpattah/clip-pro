@@ -1,0 +1,53 @@
+# ClipForge Configuration
+# Edit file ini aja, gak perlu sentuh code
+
+# ===== CLIP SETTINGS =====
+clip:
+  duration: 45          # durasi ideal tiap klip (detik)
+  min_duration: 30      # durasi minimum klip
+  max_duration: 60      # durasi maksimum klip
+  tolerance: 5          # toleransi cari jeda natural (±detik)
+  context_before: 5     # berapa detik sebelum keyword
+  max_clips: 5          # maksimal klip per video
+
+# ===== WHISPER SETTINGS =====
+whisper:
+  model: base           # tiny / base / small / medium
+  language: id          # id / en / auto
+  beam_size: 5
+  vad_filter: true
+  initial_prompt: "Video tutorial bahasa Indonesia. Istilah umum: AI, ChatGPT, TikTok, YouTube, affiliate, monetisasi, bisnis online, konten kreator, viral, algoritma, engagement, clickbait, hooks, call to action."
+
+# ===== OUTPUT SETTINGS =====
+output:
+  width: 1080
+  height: 1920
+  font: Roboto
+  font_size: 90
+  font_color: "&H00FFFFFF"     # putih
+  outline_color: "&H00000000"  # hitam
+  outline_size: 6
+  margin_vertical: 400          # jarak dari bawah (px)
+
+# ===== KEYWORD DETECTION =====
+# Bobot: makin tinggi = makin prioritas
+keywords:
+  rahasia: 10
+  jangan lupa: 10
+  penting: 10
+  "100 juta": 9
+  miliar: 9
+  tips: 8
+  trik: 8
+  hack: 8
+  cara: 6
+  gratis: 6
+  sukses: 6
+  gagal: 6
+  kesimpulan: 5
+  intinya: 5
+  kuncinya: 5
+  pertama: 4
+  kedua: 4
+  ketiga: 4
+  terakhir: 4
