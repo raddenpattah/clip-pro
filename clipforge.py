@@ -8,6 +8,7 @@ import json
 import subprocess
 from pathlib import Path
 from faster_whisper import WhisperModel
+from keyword_detector import find_keyword_hits, make_clips_from_hits
 
 # ====== KONFIGURASI ======
 CLIP_DURATION = 45          # detik per klip
@@ -168,17 +169,32 @@ def main():
     for seg in segments:
         all_words.extend(seg["words"])
 
-    # 4. Tentukan segmen klip
-    clips = []
-    num_clips = min(MAX_CLIPS, int(total_dur // CLIP_DURATION) or 1)
-    for i in range(num_clips):
-        start = i * CLIP_DURATION
-        end = min(start + CLIP_DURATION, total_dur)
-        if end - start < 5:
-            break
-        clips.append((start, end))
+    # 4. Tentukan segmen klip — PAKAI KEYWORD DULU
+    hits = find_keyword_hits(segments)
+    print(f"\n🔍 Ketemu {len(hits)} keyword hit")
 
-    print(f"\n✂️  Akan render {len(clips)} klip\n")
+    if hits:
+        clip_dicts = make_clips_from_hits(
+            hits, segments, total_dur,
+            target_duration=CLIP_DURATION, max_clips=MAX_CLIPS
+        )
+        clips = [(c["start"], c["end"]) for c in clip_dicts]
+        print(f"✂️  Mode: KEYWORD-BASED")
+        for c in clip_dicts:
+            print(f"    [{c['start']:6.1f}s - {c['end']:6.1f}s] {c['duration']:.1f}s | {c['reason']}")
+    else:
+        # Fallback: cut by duration aja
+        clips = []
+        num_clips = min(MAX_CLIPS, int(total_dur // CLIP_DURATION) or 1)
+        for i in range(num_clips):
+            start = i * CLIP_DURATION
+            end = min(start + CLIP_DURATION, total_dur)
+            if end - start < 5:
+                break
+            clips.append((start, end))
+        print(f"✂️  Mode: DURATION-BASED (gak ada keyword)")
+
+    print(f"\n🎬 Akan render {len(clips)} klip\n")
 
     # 5. Render tiap klip
     success = 0
