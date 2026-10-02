@@ -84,3 +84,10 @@ hook:
 
   # Output metadata (judul video)
   save_title: true               # simpan judul ke file .txt
+
+# ===== DICTIONARY / NORMALIZE =====
+dictionary:
+  enabled: true                # aktifkan auto-normalize transkrip
+  auto_log: true               # log kata baru ke unknown_words.log
+  min_frequency: 2             # minimal frekuensi biar di-log (kurangi spam)
+  path: "dictionary/kamus.json"

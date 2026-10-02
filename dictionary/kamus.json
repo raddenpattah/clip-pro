@@ -1,0 +1,33 @@
+{
+  "_info": "Kamus ClipForge - auto-apply di semua project. Edit manual kalau perlu, tambah typo baru di 'replacements'.",
+  "_version": "1.0",
+  "_last_updated": "2026-10-03",
+
+  "replacements": {
+    "TripFolga": "ClipForge",
+    "clip forge": "ClipForge",
+    "tesuara": "tes suara",
+    "jemenanya": "gemini-nya",
+    "erli": "early",
+    "busis": "bisnis",
+    "busis-busis": "bisnis-bisnis",
+    "kelayan": "pelanggan",
+    "sewalaupun": "sekalipun",
+    "markah": "mereka",
+    "fuhis": "whisper",
+    "paka-pukis": "pakai",
+    "pernisaman": "pernisahan",
+    "terkalihan": "terkaitkan",
+    "ngujuk-ujung": "ujung-ujungnya"
+  },
+
+  "filler_words": [
+    "eee", "hmm", "ehm", "gitu", "kan", "lah",
+    "sih", "deh", "dong"
+  ],
+
+  "brand_capitalize": [
+    "ClipForge", "TikTok", "YouTube", "Instagram",
+    "ChatGPT", "Gemini", "OpenAI", "Reels", "Shorts"
+  ]
+}

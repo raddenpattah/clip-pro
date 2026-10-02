@@ -11,6 +11,12 @@ from pathlib import Path
 from faster_whisper import WhisperModel
 from keyword_detector import find_keyword_hits, make_clips_from_hits
 from hook_builder import get_hook_text, write_hook_ass, save_title
+from dictionary_manager import (
+    load_dictionary,
+    normalize_segments,
+    find_unknown_words,
+    log_unknown_words,
+)
 
 # ====== LOAD CONFIG ======
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
@@ -50,6 +56,9 @@ if _cfg:
 
     # Hook config
     HOOK_CFG = _cfg.get("hook", {})
+
+    # Dictionary config
+    DICT_CFG = _cfg.get("dictionary", {})
 else:
     # Fallback default
     CLIP_DURATION = 45
@@ -73,6 +82,7 @@ else:
     MARGIN_V = 400
     KEYWORDS = {}
     HOOK_CFG = {"enabled": False}
+    DICT_CFG = {"enabled": False}
 # =========================
 
 def run(cmd, silent=False):
@@ -320,6 +330,32 @@ def main():
 
     # 3. Transkripsi
     segments = transcribe(video, model)
+
+    # 3.5 NORMALIZE pakai kamus (kalau enabled)
+    if DICT_CFG.get("enabled", False):
+        print(f"\n📖 Normalize pakai kamus...")
+        kamus = load_dictionary()
+        n_replacements = len(kamus.get("replacements", {}))
+        n_filler = len(kamus.get("filler_words", []))
+        n_brands = len(kamus.get("brand_capitalize", []))
+        print(f"    Kamus: {n_replacements} replacements, {n_filler} filler, {n_brands} brands")
+
+        # Deteksi kata aneh SEBELUM normalize (biar dapet raw)
+        unknown = find_unknown_words(
+            segments, kamus,
+            min_frequency=DICT_CFG.get("min_frequency", 2)
+        )
+
+        # Normalize
+        segments = normalize_segments(segments, kamus)
+        print(f"    ✅ Normalize selesai")
+
+        # Auto-log kata aneh
+        if DICT_CFG.get("auto_log", False) and unknown:
+            n_logged = log_unknown_words(unknown, video.name)
+            print(f"    📝 {n_logged} kata baru di-log ke unknown_words.log")
+            if n_logged > 0:
+                print(f"       Review: dictionary/unknown_words.log")
 
     # Flatten semua kata
     all_words = []
