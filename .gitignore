@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ===== ClipForge specific =====
+# Video input/output
+input/
+output/
+temp/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+
+# Whisper models (75MB+, gak perlu di-git)
+models/
+
+# Test files
+test_cli.py
+test_simple.py
+clip_test.mp4
+sample.mp4
