@@ -18,6 +18,7 @@ OUTPUT_W = 1080
 OUTPUT_H = 1920
 FONT = "Roboto"
 FONT_SIZE = 90
+INITIAL_PROMPT = "Video tutorial bahasa Indonesia. Istilah umum: AI, ChatGPT, TikTok, YouTube, affiliate, monetisasi, bisnis online, konten kreator, viral, algoritma, engagement, clickbait, hooks, call to action."
 # =========================
 
 def run(cmd, silent=False):
@@ -44,6 +45,7 @@ def transcribe(video_path, model):
         beam_size=5,
         vad_filter=True,
         word_timestamps=True,
+        initial_prompt=INITIAL_PROMPT,
     )
     segs = []
     for s in segments:
