@@ -336,3 +336,30 @@ reframe:
 - Hasil: 6/6 frame bagus, wajah di TENGAH
 - Transisi host->tamu: MULUS (smoothing EMA works)
 - Kesimpulan: engine single SOLID
+
+## CLI --engine (2026-10-03)
+
+### Cara Pakai
+python3 clipforge.py input.mp4 --engine single
+python3 clipforge.py input.mp4 --engine dual
+python3 clipforge.py input.mp4 --engine multi
+python3 clipforge.py input.mp4 --engine auto
+
+- Tanpa --engine -> pake config.yaml (reframe.engine)
+- Dengan --engine -> override config
+
+### Engine Recommendation
+- single : 1 orang (talking head, motivasi, video gantian shot)
+- dual   : 2 orang (interview, podcast 2)
+- multi  : 3-4 orang (panel, podcast multi)
+- auto   : fallback (deteksi otomatis)
+
+### Tested
+- Podcast Mamat (4 orang) -> multi -> 7/8 frame bagus
+- Podcast 2 orang -> single -> 6/6 frame bagus
+- Podcast Deddy (3 orang) -> multi -> 6/6 frame bagus
+
+### Status Commit
+- 06d79db: CLI --engine
+- c9f3c10: multi-engine reframe
+- 49d4126, 6dcd4c8: false positive fix + NOTES
