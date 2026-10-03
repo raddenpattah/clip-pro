@@ -573,3 +573,104 @@ python3 gradio_app.py
 - Fix timeout (30 detik)
 - Test UI full
 - Polish UI (kalau perlu)
+
+## Sesi 2026-10-03 (Malam) - Recap Lengkap
+
+### Waktu Kerja
+- 07:00 - 22:00 (~15 jam)
+- 21 commit pushed ke main
+
+### Yang Selesai Hari Ini
+
+#### 1. Smart Reframe Multi-Engine
+- Engine: single, dual, multi, auto
+- CLI flag: --engine
+- Rekomendasi:
+  * single = 1 wajah fokus (paling stabil buat podcast multi-orang)
+  * dual = 2 orang (bisa celah kosong kalau berjauhan)
+  * multi = 3-4 orang (bisa celah kosong/kepotong)
+  * auto = fallback deteksi
+
+#### 2. Batch Mode
+- CLI: --batch FOLDER
+- Proses semua video di folder, skip yang gagal
+- Summary di akhir
+
+#### 3. Auto-Handle AV1
+- Deteksi codec via ffprobe
+- Auto-convert AV1 -> H.264 temporary
+- SAFE_CODECS: h264, hevc, mpeg4, vp8, vp9
+
+#### 4. Fix Durasi Mismatch
+- Clamp max_end <= total_duration
+- Clip near-end ga lagi invalid
+
+#### 5. Smooth Crop (BREAKTHROUGH!)
+- frame_renderer.py: frame-by-frame Python renderer
+- Catmull-Rom spline interpolation
+- 25 fps di laptop 2-core
+- 2 step: crop -> overlay .ass
+- MLT GAGAL (ga interpolate, segfault)
+
+#### 6. Hook Customization
+- Font: Montserrat Black
+- Posisi: tengah bawah (alignment 2)
+- margin_top: 590
+- text_source: manual
+
+#### 7. Dictionary Stopwords
+- 345 kata umum Indonesia
+- Filter log biar ga spam
+
+#### 8. Auto-Tune Hardware
+- system_probe.py
+- Probe CPU/RAM/GPU/disk
+- Tier: weak/medium/strong
+
+#### 9. Gradio UI
+- gradio_app.py
+- Upload, engine, hook, process, log, preview
+- KNOWN ISSUE: timeout 30 menit (perlu naikin ke 2 jam)
+
+#### 10. README + NOTES
+- README lengkap
+- NOTES update
+
+### Files Baru
+- system_probe.py
+- face_tracker.py
+- reframe_engine.py
+- reframe_engines.py
+- frame_renderer.py
+- gradio_app.py
+- dictionary/stopwords_id.txt
+
+### Yang BELUM (Next Session)
+- [ ] Fix Gradio timeout (30 menit -> 2 jam) — 30 detik
+- [ ] Test UI full (verifikasi)
+- [ ] Polish UI (progress bar, download, CSS)
+- [ ] Pindah ke PC baru (i5 gen 12 + Arc A580)
+- [ ] Setup WSL2 + dependencies
+- [ ] Test smooth crop di PC (10x cepet)
+- [ ] Produksi konten pertama
+- [ ] Custom video (mirror/zoom) biar ga kena reused content
+- [ ] Active speaker detection (future)
+
+### Cara Pakai Cepat
+python3 clipforge.py input/video.mp4 --engine single --yes
+python3 clipforge.py --batch input/ --engine single --yes
+python3 gradio_app.py   # buka http://localhost:7860
+
+### Realita Laptop
+- 60 detik video = ~22 menit proses
+- Frame-by-frame = 25 fps
+- Di PC baru: ~10x cepet
+
+### Prinsip
+"Make it work, make it right, make it fast."
+- work: SELESAI
+- right: SELESAI (smooth crop)
+- fast: NUNGGU PC BARU
+
+### Resume
+Bilang: "Bro, gw balik. Baca NOTES.md di repo gw, lanjutin dari situ."
