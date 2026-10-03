@@ -22,7 +22,7 @@ whisper:
 output:
   width: 1080
   height: 1920
-  font: Roboto
+  font: Montserrat Black
   font_size: 90
   font_color: "&H00FFFFFF"     # putih
   outline_color: "&H00000000"  # hitam
@@ -75,7 +75,7 @@ hook:
   #   "manual"     -> pakai text_manual di bawah
   #   "transcript" -> ambil kalimat pertama dari transkrip
   #   "none"       -> gak ada teks hook
-  text_source: "transcript"
+  text_source: "manual"
 
   # Kalau text_source = "manual", pakai ini
   text_manual: "TONTON SAMPE HABIS! 🔥"
@@ -88,8 +88,8 @@ hook:
   font_color: "&H0000FFFF"       # kuning (BGR)
   outline_color: "&H00000000"    # hitam
   outline_size: 4
-  position: 8                    # 8=atas, 5=tengah, 2=bawah
-  margin_top: 200                # jarak dari atas (px)
+  position: 2                    # 8=atas, 5=tengah, 2=bawah (TikTok/Reels)
+  margin_top: 590                # jarak dari ATAS (px) - makin gede makin TURUN ke bawah
 
   # Background box (opsional)
   box_enabled: true

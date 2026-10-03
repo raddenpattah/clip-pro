@@ -82,8 +82,8 @@ def write_hook_ass(hook_cfg: dict, out_path: Path) -> None:
     font_color = hook_cfg.get("font_color", "&H0000FFFF")
     outline_color = hook_cfg.get("outline_color", "&H00000000")
     outline_size = hook_cfg.get("outline_size", 4)
-    position = hook_cfg.get("position", 8)
-    margin_top = hook_cfg.get("margin_top", 200)
+    position = hook_cfg.get("position", 2)      # 2 = tengah bawah (default TikTok/Reels)
+    margin_top = hook_cfg.get("margin_top", 400)  # jarak dari bawah
     box_enabled = hook_cfg.get("box_enabled", True)
     box_color = hook_cfg.get("box_color", "&H80000000")
     
@@ -103,7 +103,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Hook,Roboto,{font_size},{font_color},{outline_color},{back_color},-1,0,{border_style},{outline_size},2,{position},50,50,{margin_top},1
+Style: Hook,Montserrat Black,{font_size},{font_color},{outline_color},{back_color},-1,0,{border_style},{outline_size},2,{position},50,50,{margin_top},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -135,8 +135,8 @@ if __name__ == "__main__":
         "font_color": "&H0000FFFF",
         "outline_color": "&H00000000",
         "outline_size": 4,
-        "position": 8,
-        "margin_top": 200,
+        "position": 2,      # tengah bawah
+        "margin_top": 400,
         "box_enabled": True,
         "box_color": "&H80000000",
         "save_title": True,
