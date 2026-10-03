@@ -17,6 +17,12 @@ YUNET_URL = (
 )
 YUNET_FILENAME = "face_detection_yunet_2023mar.onnx"
 
+# Filter false positive:
+# - Score minimum (dari 0.6 default, naikin ke 0.7)
+# - Area minimum (wajah terlalu kecil = noise)
+DEFAULT_SCORE_THRESH = 0.7
+DEFAULT_MIN_AREA = 15000
+
 
 @dataclass
 class Face:
@@ -49,11 +55,13 @@ def ensure_yunet_model(models_dir: Path) -> Path:
 
 
 class FaceTracker:
-    def __init__(self, model_path: Path, score_thresh: float = 0.6):
+    def __init__(self, model_path: Path, score_thresh: float = DEFAULT_SCORE_THRESH,
+                 min_area: int = DEFAULT_MIN_AREA):
         self.detector = cv2.FaceDetectorYN.create(
             str(model_path), "", (320, 320), score_thresh, 0.3, 5000
         )
         self._size = (320, 320)
+        self.min_area = min_area
 
     def _prepare(self, frame: np.ndarray) -> np.ndarray:
         h, w = frame.shape[:2]
@@ -71,21 +79,49 @@ class FaceTracker:
         for row in raw:
             x, y, w, h = row[:4].astype(int)
             score = float(row[-1])
+            # Filter false positive: area terlalu kecil
+            if w * h < self.min_area:
+                continue
             faces.append(Face(x, y, w, h, score))
         return faces
 
 
 def pick_dominant(faces: list[Face], frame_w: int, frame_h: int) -> Optional[Face]:
+    """
+    Pilih wajah dominan:
+    - Prioritas 1: area lebih besar (lebih dekat kamera)
+    - Prioritas 2: confidence lebih tinggi
+    - Tie-breaker: dekat center (jarang kepake)
+    """
     if not faces:
         return None
+
+    # Kalau cuma 1, langsung return
+    if len(faces) == 1:
+        return faces[0]
+
     cx_frame = frame_w / 2
-    best, best_score = None, -1e9
-    for f in faces:
+
+    # Sort: area DESC, score DESC, dist ASC
+    def sort_key(f):
         dist = abs(f.cx - cx_frame) / frame_w
-        score = f.area * (1 - 0.5 * dist) * f.score
-        if score > best_score:
-            best, best_score = f, score
-    return best
+        return (-f.area, -f.score, dist)
+
+    faces_sorted = sorted(faces, key=sort_key)
+    top = faces_sorted[0]
+
+    # Kalau top dan runner-up area mirip (<10% beda), tie-break pake centrality
+    if len(faces_sorted) >= 2:
+        runner = faces_sorted[1]
+        area_diff = abs(top.area - runner.area) / max(top.area, 1)
+        if area_diff < 0.10:
+            # Area mirip — pilih yang lebih dekat center (biar ga random)
+            top_dist = abs(top.cx - cx_frame)
+            runner_dist = abs(runner.cx - cx_frame)
+            if runner_dist < top_dist:
+                return runner
+
+    return top
 
 
 def pick_multi_center(faces: list[Face], frame_w: int) -> Optional[float]:

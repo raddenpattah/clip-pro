@@ -83,8 +83,23 @@ def build_crop_timeline(
         if mode == "multi":
             cx = pick_multi_center(faces, fw)
         else:
+            # Mode single: pilih dominan, TAPI kalau ada 2+ wajah
+            # berjauhan (>40% frame width), fallback ke multi-center
+            # biar ga celah kosong di tengah.
             dom = pick_dominant(faces, fw, fh)
-            cx = dom.cx if dom else None
+            if dom and len(faces) >= 2:
+                threshold = fw * 0.60
+                far_apart = any(
+                    abs(f.cx - dom.cx) > threshold
+                    for f in faces if f is not dom
+                )
+                if far_apart:
+                    multi_cx = pick_multi_center(faces, fw)
+                    cx = multi_cx if multi_cx is not None else dom.cx
+                else:
+                    cx = dom.cx
+            else:
+                cx = dom.cx if dom else None
 
         if cx is None:
             raw.append((t_rel, last_x, False))

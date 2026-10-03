@@ -212,3 +212,50 @@ buat upgrade ClipForge. Belum ada keputusan final.
 - Sekarang: **work** ✅
 - Next: **right** (kalau ada bug)
 - Nanti: **fast** (kalau kerasa lambat)
+
+## Rencana Pindah ke PC Baru (Future)
+
+### Target Hardware
+- OS: Windows + WSL2 (udah ada)
+- CPU: Intel i5 gen 12 (10-12C / 16-20T)
+- RAM: 32 GB DDR5
+- GPU: Intel Arc A580 (8GB VRAM)
+- Storage: 512 GB
+
+### Strategi: WSL2
+- ClipForge jalan tanpa ubah kode (Linux di atas Windows)
+- GPU Arc support: DirectML atau oneAPI (opsional)
+
+### Checklist Setup di PC Baru
+1. [ ] Buka WSL2 Ubuntu
+2. [ ] Install Python 3.12+ (apt atau pyenv)
+3. [ ] Install FFmpeg (apt install ffmpeg)
+4. [ ] Install yt-dlp (pipx install yt-dlp)
+5. [ ] git clone https://github.com/raddenpattah/clip-pro.git
+6. [ ] cd clip-pro && python3 -m venv venv
+7. [ ] source venv/bin/activate
+8. [ ] pip install faster-whisper pyyaml opencv-python-headless psutil
+9. [ ] Test: python3 clipforge.py --probe-only
+10. [ ] Test: python3 clipforge.py input/video_test.mp4 --yes
+
+### GPU Arc Setup (Opsional, Advanced)
+- Intel GPU driver (Windows side, versi terbaru)
+- WSL2: install oneAPI atau DirectML
+- faster-whisper: coba backend OpenVINO
+- FFmpeg: coba h264_qsv encode (kalau support)
+
+### Yang Perlu Diupdate di system_probe.py
+- [ ] Deteksi Intel Arc (lspci / clinfo)
+- [ ] Deteksi QSV (ffmpeg -hwaccels)
+- [ ] Tier baru: "high_end" (cores >= 8, ram >= 32, gpu != none)
+- [ ] Auto-tune hardware baru
+
+### Estimasi Effort
+- Setup dasar: 1-2 jam (download + install)
+- GPU Arc tuning: 2-4 jam (opsional)
+- Total: 1-6 jam tergantung mau pake GPU atau ngga
+
+### Prinsip
+- Jangan optimasi buat hardware yang belum ada
+- Test dulu di laptop sekarang
+- Pas PC dateng, baru setup
