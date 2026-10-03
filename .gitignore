@@ -246,3 +246,4 @@ config.auto.yaml
 output_backup/
 *.bak2
 *.bak_*
+*.old
