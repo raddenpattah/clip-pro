@@ -32,25 +32,39 @@ output:
 # ===== KEYWORD DETECTION =====
 # Bobot: makin tinggi = makin prioritas
 keywords:
+  # === Tier 1: Signal paling kuat ===
   rahasia: 10
   jangan lupa: 10
   penting: 10
   "100 juta": 9
   miliar: 9
+
+  # === Tier 2: Actionable ===
   tips: 8
   trik: 8
   hack: 8
-  cara: 6
+  "cara gampang": 7
+  "cara cepat": 7
+
+  # === Tier 3: Value/konsep ===
   gratis: 6
   sukses: 6
   gagal: 6
+  "pengen kaya": 6
+  "dapet duit": 6
+
+  # === Tier 4: Kesimpulan ===
   kesimpulan: 5
   intinya: 5
   kuncinya: 5
-  pertama: 4
-  kedua: 4
-  ketiga: 4
-  terakhir: 4
+
+  # === Frasa spesifik (bukan kata tunggal) ===
+  "tips pertama": 6
+  "tips kedua": 6
+  "hal penting": 7
+  "poin penting": 8
+  "kesimpulan akhir": 7
+  "langkah pertama": 6
 
 # ===== HOOK / OPENING =====
 hook:
@@ -91,3 +105,11 @@ dictionary:
   auto_log: true               # log kata baru ke unknown_words.log
   min_frequency: 2             # minimal frekuensi biar di-log (kurangi spam)
   path: "dictionary/kamus.json"
+
+# ===== REFRAME OVERRIDE =====
+# Comment out / hapus kalau mau pakai auto-tuning dari system_probe.
+# Uncomment kalau mau override manual.
+reframe:
+  enabled: true
+  tracking: single    # single / multi / auto
+  sample_fps: 5

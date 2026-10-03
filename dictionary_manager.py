@@ -11,6 +11,33 @@ from datetime import datetime
 DICT_DIR = Path(__file__).parent / "dictionary"
 DICT_PATH = DICT_DIR / "kamus.json"
 LOG_PATH = DICT_DIR / "unknown_words.log"
+STOPWORDS_PATH = DICT_DIR / "stopwords_id.txt"
+
+_STOPWORDS_CACHE = None
+
+
+def load_stopwords(path: Path = STOPWORDS_PATH) -> set:
+    """Load stopwords dari file .txt (1 atau banyak kata per baris)."""
+    global _STOPWORDS_CACHE
+    if _STOPWORDS_CACHE is not None:
+        return _STOPWORDS_CACHE
+
+    words = set()
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                for w in line.split():
+                    words.add(w.lower())
+        print(f"    Stopwords: {len(words)} kata dari {path.name}")
+    else:
+        print(f"    ⚠️  Stopwords file ga ada, pakai COMMON_WORDS internal")
+        words = set(COMMON_WORDS)
+
+    _STOPWORDS_CACHE = words
+    return words
 
 
 # Kata umum Indonesia (biar gak dianggap "aneh")
@@ -140,6 +167,8 @@ def find_unknown_words(segments: List[Dict], kamus: Dict,
     for brand in kamus.get("brand_capitalize", []):
         known.add(brand.lower())
 
+    stopwords = load_stopwords()
+
     counts = {}
     for seg in segments:
         words = re.findall(r'\b[a-zA-Z]+\b', seg["text"])
@@ -147,7 +176,7 @@ def find_unknown_words(segments: List[Dict], kamus: Dict,
             wl = w.lower()
             if len(wl) < 4:
                 continue
-            if wl in COMMON_WORDS:
+            if wl in stopwords or wl in COMMON_WORDS:
                 continue
             if wl in known:
                 continue

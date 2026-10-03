@@ -124,3 +124,47 @@ Bilang ke AI: 'Bro, gw balik. Baca NOTES.md di repo gw, lanjutin dari situ.'
 - Deteksi wajah di FRAME OUTPUT lebih jarang kena daripada di INPUT (karena resize) — bukan bug, visual tetep oke
 - Warning OpenCV 5.0 `setPreferableTarget` — harmless, cuma CPU fallback
 - Video AV1 tetep perlu convert H.264 dulu (belum di-handle)
+
+## Ide Eksplorasi: Kdenlive/MLT (Belum Diimplementasi)
+
+**Konteks:** Diskusi 2026-10-03, eksplorasi dependency Kdenlive/MLT
+buat upgrade ClipForge. Belum ada keputusan final.
+
+### Library MLT yang Relevan
+
+| Library | Guna | Effort | Prioritas |
+|---|---|---|---|
+| `mlt.affine` | Crop pan smooth (keyframe animasi, interpolasi ease) | Sedang | ⭐ (kalau sendcmd kurang smooth) |
+| `mlt.dynamictext` | Subtitle/hook animate (per-kata, pop, fade) | Rendah-sedang | ⭐⭐ (upgrade visual) |
+| `mlt.motion_est` | Tracking non-wajah (optical flow) | Tinggi | ⭐⭐⭐ (kalau handle konten non-podcast) |
+| `mlt.opencv_tracker` | Duplikasi YuNet (skip, kita udah punya) | - | ❌ |
+| `mlt.qtblend` | Compositing layer (background blur, PiP) | Sedang | nice-to-have |
+| `mlt.frei0r.*` | 100+ efek visual | Rendah | nice-to-have |
+| `mlt.loudness` | Audio normalization | Rendah | bisa pakai FFmpeg `loudnorm` |
+| `mlt.audio_waveform` | Waveform visual | Rendah | nice-to-have |
+
+### Status Keputusan
+- **TBD** — belum diputuskan migrasi ke MLT atau ngga
+- **Alasan belum migrasi:**
+  - Pipeline FFmpeg sekarang udah works (smart reframe, hook, subtitle, keyword)
+  - Migrasi MLT = rewrite besar (`clipforge.py`, `reframe_engine.py`, `hook_builder.py`)
+  - CPU 2-core lu mungkin struggle dengan MLT (lebih berat dari FFmpeg)
+  - Belum ada pain point urgent yang butuh MLT
+
+### Kapan MLT Worth Dipertimbangkan
+- Kalau crop pan FFmpeg `sendcmd` masih kerasa "patah" setelah tuning alpha/deadzone
+- Kalau mau subtitle benar-benar animate (per-kata, pop, fade)
+- Kalau mau handle konten non-wajah (produk, gaming, slide)
+- Kalau upgrade hardware (RAM/CPU/GPU)
+
+### Urutan Prioritas (kalau mau upgrade feel)
+1. Fix crop multi-face (celah kosong) — FFmpeg + logic
+2. Tune smoothing (alpha, deadzone) — config
+3. Subtitle animate — MLT `dynamictext` (1 hari)
+4. Crop pan smooth — MLT `affine` (2-3 hari)
+5. Non-face tracking — MLT `motion_est` (1 minggu)
+
+### Ref
+- MLT Framework: https://www.mltframework.org/
+- MLT Python binding: `pip install mlt` atau `apt install python3-mlt`
+- Kdenlive source: https://invent.kde.org/multimedia/kdenlive

@@ -7,6 +7,8 @@ from typing import List, Dict
 
 # ====== KONFIGURASI ======
 # Keyword + bobot prioritas (makin tinggi, makin diprioritasin)
+# Fallback keyword list (dipakai kalau config.yaml ga nyediain keywords).
+# Sumber utama: config.yaml → KEYWORDS. Ini cuma safety net.
 KEYWORD_WEIGHTS = {
     "rahasia": 10,
     "jangan lupa": 10,
@@ -16,17 +18,22 @@ KEYWORD_WEIGHTS = {
     "tips": 8,
     "trik": 8,
     "hack": 8,
-    "cara": 6,
+    "cara gampang": 7,
+    "cara cepat": 7,
     "gratis": 6,
     "sukses": 6,
     "gagal": 6,
+    "pengen kaya": 6,
+    "dapet duit": 6,
     "kesimpulan": 5,
     "intinya": 5,
     "kuncinya": 5,
-    "pertama": 4,
-    "kedua": 4,
-    "ketiga": 4,
-    "terakhir": 4,
+    "tips pertama": 6,
+    "tips kedua": 6,
+    "hal penting": 7,
+    "poin penting": 8,
+    "kesimpulan akhir": 7,
+    "langkah pertama": 6,
 }
 
 CONTEXT_BEFORE = 5
@@ -108,7 +115,24 @@ def make_clips_from_hits(
         min_end = max(start + min_duration, target_end - tolerance)
         max_end = min(total_duration, start + max_duration, target_end + tolerance)
 
-        # Kalau gak ada ruang (video abis), skip
+        # === EDGE CASE: keyword dekat akhir video ===
+        # Kalau max_end - start < min_duration, mundurin start biar cukup panjang
+        if max_end - start < min_duration:
+            # Geser start ke kiri biar end - start >= min_duration
+            needed_start = max_end - min_duration
+            if needed_start >= 0 and h["time"] >= needed_start:
+                start = int(needed_start)
+                # Recalculate bounds
+                target_end = start + target_duration
+                min_end = max(start + min_duration, target_end - tolerance)
+                max_end = min(total_duration, start + max_duration, target_end + tolerance)
+                print(f"   ⚠️  Keyword '{h['keyword']}' dekat akhir video — "
+                      f"start digeser dari {h['time'] - context_before:.0f}s → {start}s")
+            else:
+                # Ga muat sama sekali, skip
+                continue
+
+        # Kalau masih kurang dari min_duration, skip
         if max_end - start < min_duration:
             continue
 

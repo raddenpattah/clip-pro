@@ -464,7 +464,7 @@ def main():
         all_words.extend(seg["words"])
 
     # 4. Tentukan segmen klip — PAKAI KEYWORD DULU
-    hits = find_keyword_hits(segments)
+    hits = find_keyword_hits(segments, keywords=KEYWORDS)
     print(f"\n🔍 Ketemu {len(hits)} keyword hit")
 
     if hits:

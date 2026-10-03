@@ -1,0 +1,124 @@
+# ============================================================
+# Indonesian Stopwords - kata umum yang JANGAN dianggap "unknown"
+# Satu kata per baris. Baris diawali # = komentar.
+# Format: case-insensitive, otomatis di-lowercase.
+# ============================================================
+
+# --- Konjungsi & partikel ---
+yang dan atau tapi tetapi namun karena sebab jadi makanya
+kalau jika ketika saat setelah sebelum sampai hingga
+untuk pada dengan dari ke di dalam luar atas bawah
+juga saja cuma hanya masih pernah selalu sering
+kadang mungkin pasti tentu jelas benar salah
+lah kah pun sih deh dong yah yuk ayo mari
+
+# --- Pronoun ---
+saya aku kamu kau dia ia kami kita kalian mereka
+gue gua lu elo kamu-kamu kita-kita
+ku mu nya
+
+# --- Kata umum (daily) ---
+ada tidak tak bukan sudah udah belum akan bakal
+bisa bisa-bisa harus mesti mau ingin pengen
+punya dapat dapet udah kena kudu
+harus wajib perlu penting
+
+# --- Kata tanya ---
+apa siapa kapan dimana kemana kenapa bagaimana gimana
+berapa berapa banyak mana
+
+# --- Bilangan ---
+satu dua tiga empat lima enam tujuh delapan sembilan sepuluh
+sebelas dua belas belasan puluhan ratusan ribuan
+pertama kedua ketiga keempat kelima terakhir
+setengah seperempat
+
+# --- Waktu ---
+hari bulan tahun taun jam menit detik waktu sekarang
+kemarin besok lusa tadi nanti
+pagi siang sore malam subuh dzuhur
+minggu senin selasa rabu kamis jumat sabtu
+
+# --- Kata sifat umum ---
+baik bagus jelek buruk besar kecil panjang pendek
+tinggi rendah banyak sedikit semua setiap beberapa
+lain sama beda berbeda baru lama
+mudah susah sulit gampang susah
+cepat lambat pelan
+sangat banget amat agak cukup terlalu kurang
+lumayan oke sip mantap keren hebat
+
+# --- Aktivitas ---
+lihat dengar dengar-dengar bicara ngomong ngobrol
+tanya jawab bilang kata ngomong
+mulai selesai lanjut stop berhenti
+makan minum tidur jalan datang pergi pulang
+ambil kasih beri pakai gunakan buat bikin bikin-bikin
+pikir mikir rasa coba belajar ajar tahu tau paham ngerti mengerti
+kerja usaha jual beli untung rugi
+
+# --- Benda umum ---
+orang teman teman-teman keluarga anak istri suami saudara
+video konten channel subscriber view like share
+uang duit juta miliar ribu rupiah dollar dolar
+bisnis produk hal masalah solusi bagian
+hari jam menit tempat
+
+# --- Slang / tidak baku ---
+udah udh dah tuh tu nih ni
+gimana gmn gmana
+nggak gak ga kagak
+banget bgt
+aja ajah doang
+kalo kalau
+bikin bkn
+udah2an
+mending mendingan
+kayak kaya kyk
+gitu gt gtu
+gini gni gni
+emang emg
+mang
+sekarang skrg
+ternyata ternyata
+sebenernya sebenernya
+gampang gmpang
+seneng senang
+temen teman
+bener bner
+ngerti ngerti
+kalo
+sampe sampai
+udah
+taun tahun
+jaman zaman
+perhatiin perhati
+ngasih kasih
+ngambil ambil
+ngobrol obrol
+nanya tanya
+jawab
+cuman cuma
+banyak byk
+dikit sedikit
+banget
+sekali
+ambil
+dapet dapat
+liat lihat
+denger dengar
+cari nyari
+buat bwt
+begitu gitu
+gimana
+kenapa napa
+apa
+kapan kpn
+dimana dmn
+siapa
+jumlah
+dulu duluan
+sekarang skrng
+nanti nt
+besok bsk
+kemarin kmrn
