@@ -489,3 +489,55 @@ hook:
 - Drag & drop position
 - Color picker
 - Preset platform (TikTok/Reels/Shorts)
+
+## Smooth Crop - SOLVED (2026-10-03 malam)
+
+### Masalah
+- FFmpeg sendcmd = KAKU (snap per sample, ga interpolate)
+- MLT = gagal (ga interpolate, segfault)
+- Crop geser bikin kepala kepotong
+
+### Solusi FINAL: Frame-by-Frame Python + Catmull-Rom
+- `frame_renderer.py` (BARU):
+  * Baca video via OpenCV
+  * Crop tiap frame sesuai timeline
+  * Interpolasi Catmull-Rom spline (kurva halus)
+  * Pipe raw frame ke FFmpeg stdin
+  * 25 fps di laptop 2-core (35s untuk video 30s)
+- `reframe_engine.py`:
+  * `prepare_smart_crop()` return timeline [(t, x), ...]
+  * Bukan vf filter
+- `clipforge.py`:
+  * `render_with_timeline()` helper
+  * `process_clip()` + `_render_single()` pake helper
+  * 2 step: frame-by-frame crop -> FFmpeg overlay .ass
+
+### Engine Recommendation
+- `single` - PALING STABIL buat podcast multi-orang
+  * Fokus 1 wajah dominan
+  * Ga ada celah kosong
+  * Ga ada kepala kepotong
+- `dual` - 2 orang dekat (interview)
+- `multi` - bisa celah kosong (skip dulu)
+- `auto` - fallback
+
+### Config Default
+reframe:
+  engine: single
+
+### Tested
+- Podcast Mamat (4 orang, 2 menit): 2/2 klip sukses
+- 451 samples, 450 berisi wajah (99.8%)
+- Smooth crop, no kaku
+
+### MLT (GAGAL - skip)
+- Coba MLT affine via CLI + Python binding
+- CLI: crop ga interpolate
+- Python: segfault
+- Skip, pake frame-by-frame Python
+
+### Next (PC Baru)
+1. Setup WSL2 + deps
+2. Test smooth crop di PC (jauh lebih cepet)
+3. Production konten
+4. (Optional) Active speaker detection
