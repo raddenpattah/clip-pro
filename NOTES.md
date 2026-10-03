@@ -396,3 +396,54 @@ Klik-klik, preview, save preset.
 - Hook sekarang: kuning + outline hitam + box hitam 50%
 - Masalah: posisi atas ketutup kepala (kalau orang duduk di kursi)
 - Solusi sementara: box_enabled false / box_padding tipis
+
+## Sesi 2026-10-03 - Recap Akhir
+
+### Yang Dikerjain Hari Ini
+- Smart reframe multi-engine (single/dual/multi/auto)
+- CLI --engine + --batch
+- Batch mode (loop folder)
+- Auto-handle AV1 (convert ke H.264)
+- Fix durasi mismatch (clip near-end video)
+- Fix false positive YuNet (score 0.7 + min_area 15000)
+- Fix keyword hardcoded bug (baca dari config)
+- Fix edge case near-end keyword
+- Dictionary stopwords (345 kata)
+- Auto-tune hardware (probe CPU/RAM/GPU)
+
+### Tested
+- Podcast Mamat (4 orang): multi -> 7/8 frame bagus
+- Podcast 2 orang: single -> 6/6 frame bagus
+- Podcast Deddy (3 orang): multi -> 6/6 frame bagus
+- Batch 3 video: 3/3 sukses
+- Unit test: clip near-end fixed
+
+### Personal Tool Status: SELESAI ✅
+Yang udah works:
+- Auto-transcribe + dictionary normalize
+- Keyword detection + smart boundaries
+- Smart reframe (4 engine)
+- Hook overlay + subtitle + title
+- Batch mode + CLI flags
+- Auto-tune hardware
+
+### Next (Kalau Lanjut)
+1. [ ] Test AV1 di video real
+2. [ ] UI Hook Config (Gradio/Next.js)
+3. [ ] Preset platform (TikTok/Shorts/Reels)
+4. [ ] Model small/medium (nunggu PC baru)
+5. [ ] Testing (pytest)
+6. [ ] Docker (adopsi dari clipforge)
+7. [ ] Pindah ke PC baru (i5 gen 12 + Arc A580)
+
+### Cara Pakai
+python3 clipforge.py input.mp4                  # single video
+python3 clipforge.py input.mp4 --engine single  # 1 orang
+python3 clipforge.py input.mp4 --engine dual    # 2 orang
+python3 clipforge.py input.mp4 --engine multi   # 3-4 orang
+python3 clipforge.py --batch input/             # batch mode
+
+### Prinsip
+"Make it work, make it right, make it fast."
+- Sekarang: work ✅ + right ✅
+- Next: fast (nunggu PC baru)
