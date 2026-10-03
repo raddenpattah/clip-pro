@@ -43,6 +43,8 @@ def parse_args():
     ap.add_argument("--yes", "-y", action="store_true",
                     help="Skip prompt interaktif (auto-accept)")
     ap.add_argument("--config", default="config.yaml")
+    ap.add_argument("--engine", choices=["single", "dual", "multi", "auto"],
+                    help="Reframe engine (override config.yaml)")
     return ap.parse_args()
 
 def load_runtime_config(args):
@@ -74,7 +76,16 @@ def load_runtime_config(args):
             prompt_custom(rec)
 
     write_auto_config(rec, AUTO_CONFIG_PATH)
-    return load_merged_config(user_cfg_path, AUTO_CONFIG_PATH)
+    cfg = load_merged_config(user_cfg_path, AUTO_CONFIG_PATH)
+
+    # Override engine dari CLI arg
+    if getattr(args, "engine", None):
+        if "reframe" not in cfg:
+            cfg["reframe"] = {}
+        cfg["reframe"]["engine"] = args.engine
+        print(f"⚙️  Engine override dari CLI: {args.engine}")
+
+    return cfg
 
 def load_config():
     """Fallback buat backward compat - panggil load_runtime_config tanpa probe."""

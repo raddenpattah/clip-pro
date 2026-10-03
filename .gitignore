@@ -245,3 +245,4 @@ config.auto.yaml
 *.bak
 output_backup/
 *.bak2
+*.bak_*
