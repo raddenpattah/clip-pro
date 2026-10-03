@@ -173,6 +173,54 @@ def get_duration(video_path):
     r = subprocess.run(cmd, capture_output=True, text=True)
     return float(r.stdout.strip())
 
+
+def get_video_codec(video_path):
+    """Deteksi codec video (h264, hevc, av1, vp9, dll)."""
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0",
+           "-show_entries", "stream=codec_name",
+           "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout.strip().lower()
+
+
+# Codec yang aman untuk OpenCV + FFmpeg pipeline
+SAFE_CODECS = {"h264", "hevc", "mpeg4", "vp8", "vp9"}
+
+
+def ensure_h264(video_path: Path, temp_dir: Path) -> Path:
+    """
+    Pastikan video bisa diproses:
+    - Kalau codec aman (h264, hevc, dll) -> return as-is
+    - Kalau AV1 atau codec lain -> convert ke H.264 temporary
+    
+    Return: Path video yang siap diproses (bisa jadi file baru)
+    """
+    codec = get_video_codec(video_path)
+    print(f"   🎞️  Codec: {codec}")
+
+    if codec in SAFE_CODECS:
+        return video_path
+
+    # Perlu convert
+    print(f"   ⚠️  Codec '{codec}' ga didukung pipeline, convert ke H.264...")
+    temp_path = temp_dir / f"{video_path.stem}_h264_tmp.mp4"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(video_path),
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "128k",
+        "-pix_fmt", "yuv420p",
+        str(temp_path),
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"   ❌ Gagal convert: {r.stderr[-300:]}")
+        return video_path  # fallback: coba aja process as-is
+
+    print(f"   ✅ Convert selesai: {temp_path.name}")
+    return temp_path
+
 def transcribe(video_path, model):
     """Transkripsi video, return list of segments dengan word timestamps"""
     print(f"🎙️  Transkripsi: {video_path.name}")
@@ -407,6 +455,10 @@ def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, 
 
 def process_one(video: Path, output_dir: Path, temp_dir: Path) -> tuple[int, int]:
     """Process 1 video. Return (success_clips, total_clips)."""
+    # 0. Pastikan codec aman (auto-convert AV1, dll)
+    original_video = video
+    video = ensure_h264(video, temp_dir)
+
     # 1. Ambil durasi
     total_dur = get_duration(video)
     print(f"📹 Video: {video.name}")
