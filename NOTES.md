@@ -259,3 +259,72 @@ buat upgrade ClipForge. Belum ada keputusan final.
 - Jangan optimasi buat hardware yang belum ada
 - Test dulu di laptop sekarang
 - Pas PC dateng, baru setup
+
+## Status Terkini (2026-10-03 - Sesi 2)
+
+### Yang Baru Dikerjain
+- Fix false positive YuNet: score_thresh 0.6 -> 0.7, min_area 15000
+- Fix pick_dominant(): prioritas area besar, tie-break centrality
+- Fallback multi_center kalau 2+ wajah berjauhan
+- Threshold 60% -> 20% (2 wajah jarak >20% fallback multi)
+- Hapus output_backup/ dari git
+
+### Tested
+- Podcast Mamat 4 orang: 7/8 frame bagus
+- False positive filter works (205/226 vs 226/226 = 21 frame noise ke-filter)
+- Frame 30s: dari 'pinggir kanan' -> 'tengah' (FIXED)
+- Frame 20s: masih agak pinggir (1 dari 8, minor)
+- Frame 40s, 45s: bagus (2 orang beneran)
+
+### Commit Terakhir
+- 6dcd4c8: fix false positive + threshold 20%
+
+### Rencana Besok: Multi-Engine Reframe
+
+**Konsep:** engine terpisah per skenario, user pilih.
+
+**Engine:**
+- `single` - 1 orang (talking head)
+- `dual`   - 2 orang (interview)
+- `multi`  - 3-4 orang (podcast/panel) <- logic sekarang
+- `auto`   - fallback
+
+**Struktur:**
+reframe_engine/
+  __init__.py    # dispatcher
+  base.py
+  single.py
+  dual.py
+  multi.py
+  auto.py
+
+**Config:**
+reframe:
+  engine: multi    # single | dual | multi | auto
+
+**CLI:**
+--engine single|dual|multi|auto
+
+**Roadmap:**
+1. [ ] Refactor: bikin folder reframe_engine/
+2. [ ] Split logic sekarang ke multi.py
+3. [ ] Bikin single.py (1 orang, simple)
+4. [ ] Bikin dual.py (2 orang, threshold 30%)
+5. [ ] Bikin auto.py (fallback)
+6. [ ] Test tiap engine
+7. [ ] CLI flag --engine
+8. [ ] UI (Gradio) - nanti
+
+**Effort estimasi:** 3-4 jam
+
+### Referensi: Repo clipforge
+- Repo: raddenpattah/clipforge (lebih mature, ada Web UI)
+- Struktur: backend + frontend (Next.js)
+- Fitur lebih: API, Docker, testing, LLM
+- **Keputusan:** skip migrasi, fokus clip-pro dulu
+- **Kalau nanti butuh:** adopsi Docker + testing
+
+### Prinsip
+"Make it work, make it right, make it fast."
+- Sekarang: work + right (sebagian)
+- Next: multi-engine
