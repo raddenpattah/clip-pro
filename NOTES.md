@@ -168,3 +168,47 @@ buat upgrade ClipForge. Belum ada keputusan final.
 - MLT Framework: https://www.mltframework.org/
 - MLT Python binding: `pip install mlt` atau `apt install python3-mlt`
 - Kdenlive source: https://invent.kde.org/multimedia/kdenlive
+
+## Kamus — Status & Keputusan (2026-10-03)
+
+### Konsep Final: Visi X (To-Do List)
+- Log `unknown_words.log` = kata yang **belum di kamus** (to-do list)
+- Kata yang **udah di kamus** → ga di-log lagi (langsung di-replace)
+- **Alasan:** log tetap bersih & fokus, ga numpuk history
+
+### Alur
+1. Whisper transkrip
+2. `apply_normalization()` → replace kata yang ada di kamus
+3. `find_unknown_words()` → deteksi kata baru (belum di kamus, bukan stopwords)
+4. `log_unknown_words()` → tulis ke log
+5. User review log → tambahin ke `kamus.json` (manual edit)
+6. Next run: kata yang udah di kamus → auto-replace
+
+### Komponen
+- `dictionary/kamus.json` — 15 replacements, 9 filler, 9 brands
+- `dictionary/stopwords_id.txt` — 345 kata umum Indonesia (filter log)
+- `dictionary/unknown_words.log` — to-do list (di-ignore git)
+- `dictionary_manager.py` — load, normalize, detect unknown, log
+
+### Tested (2026-10-03)
+- ✅ Replace kata: `tesuara` → `tes suara`, `TripFolga` → `ClipForge`
+- ✅ Filler removal: `eee`, `kan`, `hmm`, `deh` ke-hapus
+- ✅ Brand capitalize: `tiktok` → `TikTok`, `youtube` → `YouTube`
+- ✅ Unknown detection: `qwerty` ke-detect, `tesuara` (udah di kamus) **ga ke-detect**
+
+### Keputusan (yang BELUM dikerjain)
+- ❌ Visi Y (log semua kejadian) — over-engineering, skip dulu
+- ❌ CLI `--review` — belum perlu, manual edit cukup
+- ❌ Auto-promote dari log ke kamus — risky, skip
+- ❌ Database/UI/cloud — over-engineering
+
+### Kalau Nanti Perlu Upgrade
+- Visi Y: ubah `find_unknown_words()` biar ga skip kata yang ada di kamus, tambah tanda `[SOLVED]`
+- CLI review: parse log, prompt user per kata, tulis ke `kamus.json`
+- Statistik: parse log, hitung frequency & trend
+
+### Prinsip
+"Make it work, make it right, make it fast."
+- Sekarang: **work** ✅
+- Next: **right** (kalau ada bug)
+- Nanti: **fast** (kalau kerasa lambat)
