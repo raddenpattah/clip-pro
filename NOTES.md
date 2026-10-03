@@ -447,3 +447,45 @@ python3 clipforge.py --batch input/             # batch mode
 "Make it work, make it right, make it fast."
 - Sekarang: work ✅ + right ✅
 - Next: fast (nunggu PC baru)
+
+## Hook Customization (2026-10-03)
+
+### Yang Diubah
+- Font: Roboto -> Montserrat Black
+- Position: 8 (atas) -> 2 (tengah bawah, TikTok-style)
+- margin_top: 200 -> 590
+- text_source: "transcript" -> "manual" (user atur)
+- text_manual: "TONTON SAMPE HABIS! 🔥"
+
+### Requirement Baru
+- Font Montserrat: sudo apt install fonts-montserrat
+
+### Cara Atur Hook
+Edit config.yaml:
+hook:
+  text_source: "manual"
+  text_manual: "TEXT HOOK LU"    # max 60-70 char
+  font_size: 80
+  font_color: "&H0000FFFF"        # kuning BGR
+  position: 2                     # 2=bawah, 5=tengah, 8=atas
+  margin_top: 590                 # makin gede makin turun
+  box_enabled: true
+
+### Tips Text Hook
+- Max 60-70 char (2-3 baris)
+- Pakai emoji
+- Pakai angka ("100 JUTA", "3 TIPS")
+- Pakai pertanyaan ("MAU KAYA?")
+
+### Tested
+- Video 30 detik: hook di tengah bawah
+- Kepala kelihatan (ga ketutup)
+- Font Montserrat Black kebaca
+- Text manual ke-pake
+
+### Next: UI Hook Config (Future)
+- Gradio/Next.js
+- Preview real-time
+- Drag & drop position
+- Color picker
+- Preset platform (TikTok/Reels/Shorts)
