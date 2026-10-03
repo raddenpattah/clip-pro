@@ -237,3 +237,9 @@ test_cli.py
 test_simple.py
 clip_test.mp4
 sample.mp4
+
+# Auto-tune config (per-mesin, jangan di-commit)
+config.auto.yaml
+
+# Backup files
+*.bak

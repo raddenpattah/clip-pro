@@ -4,10 +4,10 @@
 https://github.com/raddenpattah/clip-pro
 
 ## Last Session
-2026-10-03 - Fitur dictionary manager selesai
+2026-10-03 - Smart reframe + auto-tune hardware selesai & tested
 
 ## Status
-MVP + fitur lengkap, siap test produksi.
+MVP + smart reframe + auto-tune hardware. Siap test produksi.
 
 ## Environment
 - OS: Ubuntu 26.04
@@ -22,6 +22,9 @@ MVP + fitur lengkap, siap test produksi.
 - hook_builder.py           : Hook overlay + title
 - keyword_detector.py       : Keyword detection + smart boundaries
 - dictionary_manager.py     : Normalize transkrip + auto-log
+- system_probe.py           : Deteksi hardware + auto-tune config
+- face_tracker.py           : Deteksi + tracking wajah (YuNet)
+- reframe_engine.py         : Crop timeline + FFmpeg sendcmd
 - config.yaml               : Semua setting
 - dictionary/kamus.json     : Kamus (di-commit)
 - dictionary/unknown_words.log : Log lokal (di-ignore)
@@ -37,6 +40,10 @@ MVP + fitur lengkap, siap test produksi.
 7. Title auto-generate
 8. Config YAML (semua fleksibel)
 9. Dictionary normalize + auto-log
+10. Smart reframe (YuNet face tracking, EMA smoothing, sendcmd dynamic crop)
+11. Auto-tune hardware (probe CPU/RAM/GPU → rekomendasi config)
+12. Config merge (config.yaml + config.auto.yaml, user menang)
+13. CLI flags: --yes, --probe-only, --no-probe, --force-smart
 
 ## Config Utama (config.yaml)
 - clip.duration: 45s
@@ -77,3 +84,43 @@ MVP + fitur lengkap, siap test produksi.
 
 ## Cara Balik ke Context
 Bilang ke AI: 'Bro, gw balik. Baca NOTES.md di repo gw, lanjutin dari situ.'
+
+## Smart Reframe (2026-10-03)
+
+### Arsitektur
+- `system_probe.py` → probe hardware (CPU/RAM/GPU/disk/load)
+- `config.auto.yaml` → auto-generated, di-merge dengan `config.yaml` (user menang)
+- `face_tracker.py` → YuNet detector (auto-download 230KB ke models/)
+- `reframe_engine.py` → sample frame 5fps → crop timeline → FFmpeg `sendcmd`
+
+### Alur
+1. Probe hardware → tulis config.auto.yaml
+2. Merge: config.yaml (user) OVERRIDE config.auto.yaml (auto)
+3. Per klip: sample frame → detect wajah → hitung crop X → smoothing EMA
+4. Tulis sendcmd → FFmpeg pakai `crop=w:h:x:y,sendcmd=f=...`
+5. Kalau ga ada wajah → fallback center crop
+
+### Config
+- `reframe.enabled`: on/off
+- `reframe.sample_fps`: 3 (weak) / 5 (medium) / 8 (strong)
+- `reframe.smoothing.alpha`: 0.3 (makin kecil = makin halus)
+- `reframe.smoothing.deadzone_px`: 40 (toleransi gerak)
+- `reframe.fallback`: center
+
+### CLI Flags Baru
+- `--yes` / `-y` : skip prompt interaktif
+- `--probe-only` : cuma tampilin spec + rekomendasi
+- `--no-probe` : skip probe, pakai config.yaml aja
+- `--force-smart` : paksa smart reframe walau CPU lemah
+- `--config <path>` : custom config path
+
+### Tested
+- `input/yt_test_h264.mp4` (120s, Raditya Dika podcast, 4 orang)
+  - Hook: 26/26 samples ada wajah
+  - Main: 157/237 samples ada wajah
+  - Output: crop gerak ngikutin wajah, visual enak ✅
+
+### Known Limits
+- Deteksi wajah di FRAME OUTPUT lebih jarang kena daripada di INPUT (karena resize) — bukan bug, visual tetep oke
+- Warning OpenCV 5.0 `setPreferableTarget` — harmless, cuma CPU fallback
+- Video AV1 tetep perlu convert H.264 dulu (belum di-handle)

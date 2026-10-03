@@ -17,16 +17,69 @@ from dictionary_manager import (
     find_unknown_words,
     log_unknown_words,
 )
+from system_probe import (
+    probe_system, recommend_config, write_auto_config,
+    load_merged_config, print_report, classify,
+    prompt_weak_hardware, prompt_custom,
+)
+from reframe_engine import prepare_smart_crop
+import argparse
+import builtins
 
 # ====== LOAD CONFIG ======
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
+AUTO_CONFIG_PATH = Path(__file__).parent / "config.auto.yaml"
+MODELS_DIR = Path(__file__).parent / "models"
+
+def parse_args():
+    ap = argparse.ArgumentParser(description="ClipForge - auto video cutter")
+    ap.add_argument("input", nargs="?", help="Path video input")
+    ap.add_argument("--no-probe", action="store_true",
+                    help="Skip system probe, pakai config.yaml aja")
+    ap.add_argument("--force-smart", action="store_true",
+                    help="Paksa smart reframe walau CPU lemah")
+    ap.add_argument("--probe-only", action="store_true",
+                    help="Cuma tampilin spec + rekomendasi, keluar")
+    ap.add_argument("--yes", "-y", action="store_true",
+                    help="Skip prompt interaktif (auto-accept)")
+    ap.add_argument("--config", default="config.yaml")
+    return ap.parse_args()
+
+def load_runtime_config(args):
+    project_dir = Path(__file__).parent
+    user_cfg_path = project_dir / args.config
+
+    if args.no_probe:
+        if user_cfg_path.exists():
+            with open(user_cfg_path, "r") as f:
+                return yaml.safe_load(f) or {}
+        return {}
+
+    spec = probe_system(project_dir)
+    rec = recommend_config(spec)
+    print_report(spec, rec)
+
+    if args.probe_only:
+        write_auto_config(rec, AUTO_CONFIG_PATH)
+        print(f"✅ Ditulis ke {AUTO_CONFIG_PATH}")
+        raise SystemExit(0)
+
+    tier = classify(spec)
+    if tier == "weak" and not args.yes and not args.force_smart:
+        choice = prompt_weak_hardware(spec, rec)
+        if choice == "cancel":
+            print("❌ Dibatalkan.")
+            raise SystemExit(1)
+        if choice == "custom":
+            prompt_custom(rec)
+
+    write_auto_config(rec, AUTO_CONFIG_PATH)
+    return load_merged_config(user_cfg_path, AUTO_CONFIG_PATH)
 
 def load_config():
-    if not CONFIG_PATH.exists():
-        print(f"⚠️  Config {CONFIG_PATH} gak ada, pakai default")
-        return None
-    with open(CONFIG_PATH, "r") as f:
-        return yaml.safe_load(f)
+    """Fallback buat backward compat - panggil load_runtime_config tanpa probe."""
+    class _A: no_probe=True; config="config.yaml"; probe_only=False; yes=False; force_smart=False
+    return load_runtime_config(_A())
 
 _cfg = load_config()
 if _cfg:
@@ -45,6 +98,10 @@ if _cfg:
 
     OUTPUT_W = _cfg["output"]["width"]
     OUTPUT_H = _cfg["output"]["height"]
+    _enc = _cfg.get("encode", {})
+    ENCODE_PRESET = _enc.get("preset", "fast")
+    ENCODE_CRF = _enc.get("crf", 23)
+    ENCODE_THREADS = _enc.get("threads", 2)
     FONT = _cfg["output"]["font"]
     FONT_SIZE = _cfg["output"]["font_size"]
     FONT_COLOR = _cfg["output"]["font_color"]
@@ -74,6 +131,9 @@ else:
     INITIAL_PROMPT = ""
     OUTPUT_W = 1080
     OUTPUT_H = 1920
+    ENCODE_PRESET = "fast"
+    ENCODE_CRF = 23
+    ENCODE_THREADS = 2
     FONT = "Roboto"
     FONT_SIZE = 90
     FONT_COLOR = "&H00FFFFFF"
@@ -163,7 +223,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         )
     Path(out_path).write_text("\n".join(lines), encoding="utf-8")
 
-def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, hook_cfg=None):
+def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, hook_cfg=None, cfg=None):
     """Proses 1 klip: opening+hook + main content + subtitle."""
     duration = clip_end - clip_start
 
@@ -172,7 +232,7 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
 
     if not use_hook:
         # === MODE LAMA: tanpa hook ===
-        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=cfg)
 
     # === MODE BARU: opening + main ===
     hook_dur = hook_cfg.get("duration", 5)
@@ -188,8 +248,17 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
 
     # 2. Render HOOK part (0-5s video + overlay text, TANPA subtitle)
     hook_ass_escaped = str(hook_ass).replace("\\", "/").replace(":", "\\:")
+    crop_filter_hook, _ = prepare_smart_crop(
+        video_path=video_path,
+        clip_start=0.0,
+        clip_end=hook_dur,
+        models_dir=MODELS_DIR,
+        temp_dir=temp_dir,
+        out_stem=f"{out_path.stem}_hook",
+        cfg=cfg or {},
+    )
     vf_hook = (
-        f"crop=ih*9/16:ih,"
+        f"{crop_filter_hook},"
         f"scale={OUTPUT_W}:{OUTPUT_H},"
         f"ass='{hook_ass_escaped}'"
     )
@@ -199,7 +268,8 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
         "-to", f"{hook_dur}",
         "-i", str(video_path),
         "-vf", vf_hook,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
+        "-threads", str(ENCODE_THREADS),
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k",
         str(hook_video),
@@ -209,14 +279,23 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
     if r.returncode != 0:
         print(f"    ⚠️  Gagal render hook, fallback ke mode lama")
         print(r.stderr[-300:])
-        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=cfg)
 
     # 3. Render MAIN part (clip_start-clip_end + subtitle)
     main_ass = temp_dir / f"{out_path.stem}_main.ass"
     write_ass(words, clip_start, clip_end, main_ass)
     main_ass_escaped = str(main_ass).replace("\\", "/").replace(":", "\\:")
+    crop_filter_main, _ = prepare_smart_crop(
+        video_path=video_path,
+        clip_start=clip_start,
+        clip_end=clip_end,
+        models_dir=MODELS_DIR,
+        temp_dir=temp_dir,
+        out_stem=f"{out_path.stem}_main",
+        cfg=cfg or {},
+    )
     vf_main = (
-        f"crop=ih*9/16:ih,"
+        f"{crop_filter_main},"
         f"scale={OUTPUT_W}:{OUTPUT_H},"
         f"ass='{main_ass_escaped}'"
     )
@@ -226,7 +305,8 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
         "-to", f"{clip_end:.2f}",
         "-i", str(video_path),
         "-vf", vf_main,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
+        "-threads", str(ENCODE_THREADS),
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k",
         str(main_video),
@@ -269,15 +349,24 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
     return True
 
 
-def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir):
+def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=None):
     """Render 1 klip tanpa hook (mode lama)."""
     duration = clip_end - clip_start
     ass_path = temp_dir / f"{out_path.stem}.ass"
     write_ass(words, clip_start, clip_end, ass_path)
 
     ass_escaped = str(ass_path).replace("\\", "/").replace(":", "\\:")
+    crop_filter, _ = prepare_smart_crop(
+        video_path=video_path,
+        clip_start=clip_start,
+        clip_end=clip_end,
+        models_dir=MODELS_DIR,
+        temp_dir=temp_dir,
+        out_stem=out_path.stem,
+        cfg=cfg or {},
+    )
     vf = (
-        f"crop=ih*9/16:ih,"
+        f"{crop_filter},"
         f"scale={OUTPUT_W}:{OUTPUT_H},"
         f"ass='{ass_escaped}'"
     )
@@ -288,7 +377,8 @@ def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir):
         "-to", f"{clip_end:.2f}",
         "-i", str(video_path),
         "-vf", vf,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
+        "-threads", str(ENCODE_THREADS),
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
@@ -303,11 +393,22 @@ def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir):
     return True
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 clipforge.py <video.mp4>")
+    args = parse_args()
+
+    # Auto-tune config dari hardware (kecuali --no-probe)
+    # --probe-only akan exit di dalam sini
+    runtime_cfg = load_runtime_config(args)
+    if runtime_cfg:
+        builtins.CFG = runtime_cfg
+    else:
+        builtins.CFG = {}
+
+    # Baru cek input (setelah probe-only handled)
+    if not args.input:
+        print("Usage: python3 clipforge.py <video.mp4> [--yes] [--probe-only] [--no-probe]")
         sys.exit(1)
 
-    video = Path(sys.argv[1])
+    video = Path(args.input)
     if not video.exists():
         print(f"❌ File tidak ditemukan: {video}")
         sys.exit(1)
@@ -414,7 +515,7 @@ def main():
 
         hook_for_clip = HOOK_CFG if use_hook_this else None
 
-        if process_clip(video, start, end, all_words, out_path, temp_dir, hook_cfg=hook_for_clip):
+        if process_clip(video, start, end, all_words, out_path, temp_dir, hook_cfg=hook_for_clip, cfg=builtins.CFG):
             print(f"    ✅ {out_path}")
             success += 1
 
