@@ -244,3 +244,4 @@ config.auto.yaml
 # Backup files
 *.bak
 output_backup/
+*.bak2

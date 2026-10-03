@@ -111,5 +111,11 @@ dictionary:
 # Uncomment kalau mau override manual.
 reframe:
   enabled: true
-  tracking: single    # single / multi / auto
+  # Engine: pilih sesuai tipe video
+  #   single - 1 orang (talking head, motivasi)
+  #   dual   - 2 orang (interview, podcast 2)
+  #   multi  - 3-4 orang (panel, podcast 4) 
+  #   auto   - fallback (deteksi otomatis)
+  engine: multi
+  tracking: single    # (legacy, diabaikan kalau engine di-set)
   sample_fps: 5

@@ -11,6 +11,7 @@ from face_tracker import (
     FaceTracker, Face, pick_dominant, pick_multi_center, auto_choose_mode,
     ensure_yunet_model,
 )
+from reframe_engines import pick_crop_center
 
 
 @dataclass
@@ -51,6 +52,7 @@ def build_crop_timeline(
     tracking: str = "auto",
     score_thresh: float = 0.6,
     fallback: str = "center",
+    engine: str = None,
 ) -> list[CropSample]:
     model_path = ensure_yunet_model(models_dir)
     tracker = FaceTracker(model_path, score_thresh=score_thresh)
@@ -80,15 +82,17 @@ def build_crop_timeline(
         if not faces:
             raw.append((t_rel, last_x, False))
             continue
-        if mode == "multi":
+        # Prioritas: explicit engine (dari config/CLI)
+        # Fallback: legacy `tracking` mode
+        if engine:
+            cx = pick_crop_center(faces, fw, fh, engine_name=engine)
+        elif mode == "multi":
             cx = pick_multi_center(faces, fw)
         else:
-            # Mode single: pilih dominan, TAPI kalau ada 2+ wajah
-            # berjauhan (>40% frame width), fallback ke multi-center
-            # biar ga celah kosong di tengah.
+            # Legacy single mode: pilih dominan, fallback multi kalau jauh
             dom = pick_dominant(faces, fw, fh)
             if dom and len(faces) >= 2:
-                threshold = fw * 0.60
+                threshold = fw * 0.20
                 far_apart = any(
                     abs(f.cx - dom.cx) > threshold
                     for f in faces if f is not dom
@@ -181,6 +185,11 @@ def prepare_smart_crop(
             return "crop=ih*9/16:ih", False
 
         rcfg = cfg["reframe"]
+        # Prioritas: engine eksplisit, fallback ke tracking mode
+        engine_name = rcfg.get("engine")
+        if engine_name == "auto" or not engine_name:
+            engine_name = None
+
         timeline = build_crop_timeline(
             video_path=video_path,
             t_start=clip_start,
@@ -189,7 +198,11 @@ def prepare_smart_crop(
             sample_fps=rcfg.get("sample_fps", 5),
             tracking=rcfg.get("tracking", "auto"),
             fallback=rcfg.get("fallback", "center"),
+            engine=engine_name,
         )
+
+        if engine_name:
+            print(f"   🎯 Engine: {engine_name}")
 
         if not timeline:
             print("   ⚠️  Smart reframe: timeline kosong, fallback static")

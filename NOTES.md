@@ -328,3 +328,11 @@ reframe:
 "Make it work, make it right, make it fast."
 - Sekarang: work + right (sebagian)
 - Next: multi-engine
+
+### Test Podcast 2 Orang (Engine single)
+- Video: podcast_2orang_2min.mp4 (Deddy Corbuzier? atau podcast 2 orang)
+- Layout: 1 orang per frame, shot gantian (host -> tamu)
+- Engine: single
+- Hasil: 6/6 frame bagus, wajah di TENGAH
+- Transisi host->tamu: MULUS (smoothing EMA works)
+- Kesimpulan: engine single SOLID
