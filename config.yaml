@@ -111,6 +111,10 @@ dictionary:
 # Uncomment kalau mau override manual.
 reframe:
   enabled: true
+  # Smoothing: atur kehalusan crop tracking
+  smoothing:
+    alpha: 0.6          # makin kecil makin halus, makin besar makin responsif
+    deadzone_px: 15     # toleransi gerak sebelum crop ikut gerak
   # Engine: pilih sesuai tipe video
   #   single - 1 orang (talking head, motivasi)
   #   dual   - 2 orang (interview, podcast 2)
@@ -118,4 +122,4 @@ reframe:
   #   auto   - fallback (deteksi otomatis)
   engine: multi
   tracking: single    # (legacy, diabaikan kalau engine di-set)
-  sample_fps: 5
+  sample_fps: 10
