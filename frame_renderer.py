@@ -9,25 +9,59 @@ from pathlib import Path
 from typing import List, Tuple
 
 
+def _catmull_rom(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
+    """
+    Catmull-Rom spline interpolation.
+    p0, p1, p2, p3: 4 control points
+    t: 0.0 to 1.0 (posisi antara p1 dan p2)
+    """
+    t2 = t * t
+    t3 = t2 * t
+    return 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+    )
+
+
 def interpolate_x(frame_idx: int, timeline: List[Tuple[float, int]]) -> int:
     """
-    Interpolate x untuk frame tertentu.
-    timeline: list of (time_sec, x)
+    Interpolate x untuk frame tertentu pakai Catmull-Rom spline.
+    timeline: list of (frame_idx, x) — sorted by frame_idx
     """
     if not timeline:
         return 0
-    if frame_idx <= 0:
+    if len(timeline) == 1:
         return timeline[0][1]
-    
-    # Cari segment
+    if frame_idx <= timeline[0][0]:
+        return timeline[0][1]
+    if frame_idx >= timeline[-1][0]:
+        return timeline[-1][1]
+
+    # Cari segment (i, i+1) di mana frame_idx berada
     for i in range(len(timeline) - 1):
-        t1, x1 = timeline[i]
-        t2, x2 = timeline[i + 1]
-        if t1 <= frame_idx <= t2:
-            ratio = (frame_idx - t1) / max(t2 - t1, 1)
-            return int(x1 + ratio * (x2 - x1))
-    
+        f1, x1 = timeline[i]
+        f2, x2 = timeline[i + 1]
+        if f1 <= frame_idx <= f2:
+            # Hitung t (0.0 - 1.0)
+            t = (frame_idx - f1) / max(f2 - f1, 1)
+
+            # Ambil control points
+            # p1 = x1, p2 = x2
+            # p0 = titik sebelum x1 (atau x1 kalau ga ada)
+            # p3 = titik setelah x2 (atau x2 kalau ga ada)
+            p1 = float(x1)
+            p2 = float(x2)
+            p0 = float(timeline[i - 1][1]) if i > 0 else p1
+            p3 = float(timeline[i + 2][1]) if i + 2 < len(timeline) else p2
+
+            # Spline interpolation
+            result = _catmull_rom(p0, p1, p2, p3, t)
+            return int(round(result))
+
     return timeline[-1][1]
+
 
 
 def render_frame_by_frame(

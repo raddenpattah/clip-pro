@@ -23,6 +23,7 @@ from system_probe import (
     prompt_weak_hardware, prompt_custom,
 )
 from reframe_engine import prepare_smart_crop
+from frame_renderer import render_frame_by_frame
 import argparse
 import builtins
 
@@ -285,31 +286,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     Path(out_path).write_text("\n".join(lines), encoding="utf-8")
 
 def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, hook_cfg=None, cfg=None):
-    """Proses 1 klip: opening+hook + main content + subtitle."""
+    """Proses 1 klip: opening+hook + main content + subtitle (frame-by-frame)."""
     duration = clip_end - clip_start
 
     # Cek apakah pakai hook
     use_hook = hook_cfg and hook_cfg.get("enabled", False) and hook_cfg.get("_hook_text")
 
     if not use_hook:
-        # === MODE LAMA: tanpa hook ===
+        # === MODE TANPA HOOK ===
         return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=cfg)
 
-    # === MODE BARU: opening + main ===
+    # === MODE DENGAN HOOK ===
     hook_dur = hook_cfg.get("duration", 5)
 
     # File temporer
     hook_video = temp_dir / f"{out_path.stem}_hook.mp4"
     main_video = temp_dir / f"{out_path.stem}_main.mp4"
     hook_ass = temp_dir / f"{out_path.stem}_hook.ass"
+    main_ass = temp_dir / f"{out_path.stem}_main.ass"
     list_file = temp_dir / f"{out_path.stem}_concat.txt"
 
-    # 1. Bikin .ass hook overlay
+    # ===== HOOK PART =====
     write_hook_ass(hook_cfg, hook_ass)
 
-    # 2. Render HOOK part (0-5s video + overlay text, TANPA subtitle)
-    hook_ass_escaped = str(hook_ass).replace("\\", "/").replace(":", "\\:")
-    crop_filter_hook, _ = prepare_smart_crop(
+    timeline_hook, _ = prepare_smart_crop(
         video_path=video_path,
         clip_start=0.0,
         clip_end=hook_dur,
@@ -318,35 +318,26 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
         out_stem=f"{out_path.stem}_hook",
         cfg=cfg or {},
     )
-    vf_hook = (
-        f"{crop_filter_hook},"
-        f"scale={OUTPUT_W}:{OUTPUT_H},"
-        f"ass='{hook_ass_escaped}'"
-    )
-    cmd_hook = [
-        "ffmpeg", "-y",
-        "-ss", "0",
-        "-to", f"{hook_dur}",
-        "-i", str(video_path),
-        "-vf", vf_hook,
-        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
-        "-threads", str(ENCODE_THREADS),
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k",
-        str(hook_video),
-    ]
+
     print(f"    🎣 Render hook: {hook_video.name} ({hook_dur}s)...")
-    r = run(cmd_hook, silent=True)
-    if r.returncode != 0:
+    ok_hook = render_with_timeline(
+        video_path=video_path,
+        clip_start=0.0,
+        clip_end=hook_dur,
+        timeline=timeline_hook,
+        ass_path=hook_ass,
+        out_path=hook_video,
+        temp_dir=temp_dir,
+        fps=30,
+    )
+    if not ok_hook:
         print(f"    ⚠️  Gagal render hook, fallback ke mode lama")
-        print(r.stderr[-300:])
         return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=cfg)
 
-    # 3. Render MAIN part (clip_start-clip_end + subtitle)
-    main_ass = temp_dir / f"{out_path.stem}_main.ass"
+    # ===== MAIN PART =====
     write_ass(words, clip_start, clip_end, main_ass)
-    main_ass_escaped = str(main_ass).replace("\\", "/").replace(":", "\\:")
-    crop_filter_main, _ = prepare_smart_crop(
+
+    timeline_main, _ = prepare_smart_crop(
         video_path=video_path,
         clip_start=clip_start,
         clip_end=clip_end,
@@ -355,31 +346,23 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
         out_stem=f"{out_path.stem}_main",
         cfg=cfg or {},
     )
-    vf_main = (
-        f"{crop_filter_main},"
-        f"scale={OUTPUT_W}:{OUTPUT_H},"
-        f"ass='{main_ass_escaped}'"
-    )
-    cmd_main = [
-        "ffmpeg", "-y",
-        "-ss", f"{clip_start:.2f}",
-        "-to", f"{clip_end:.2f}",
-        "-i", str(video_path),
-        "-vf", vf_main,
-        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
-        "-threads", str(ENCODE_THREADS),
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k",
-        str(main_video),
-    ]
-    print(f"    🎬 Render main: {main_video.name} ({duration:.1f}s)...")
-    r = run(cmd_main, silent=True)
-    if r.returncode != 0:
-        print(f"    ⚠️  Gagal render main, fallback")
-        print(r.stderr[-300:])
-        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir)
 
-    # 4. Concat hook + main
+    print(f"    🎬 Render main: {main_video.name} ({duration:.1f}s)...")
+    ok_main = render_with_timeline(
+        video_path=video_path,
+        clip_start=clip_start,
+        clip_end=clip_end,
+        timeline=timeline_main,
+        ass_path=main_ass,
+        out_path=main_video,
+        temp_dir=temp_dir,
+        fps=30,
+    )
+    if not ok_main:
+        print(f"    ⚠️  Gagal render main, fallback")
+        return _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=cfg)
+
+    # ===== CONCAT HOOK + MAIN =====
     list_file.write_text(
         f"file '{hook_video.resolve()}'\nfile '{main_video.resolve()}'\n"
     )
@@ -398,7 +381,7 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
         print(r.stderr[-300:])
         return False
 
-    # 5. Cleanup temp
+    # Cleanup
     for f in [hook_video, main_video, hook_ass, main_ass, list_file]:
         try:
             f.unlink()
@@ -410,14 +393,110 @@ def process_clip(video_path, clip_start, clip_end, words, out_path, temp_dir, ho
     return True
 
 
+def render_with_timeline(
+    video_path: Path,
+    clip_start: float,
+    clip_end: float,
+    timeline: list,
+    ass_path: Path,
+    out_path: Path,
+    temp_dir: Path,
+    fps: int = 30,
+) -> bool:
+    """
+    Render 1 klip dengan timeline crop + overlay .ass.
+    2 step:
+      1. frame-by-frame crop -> raw video
+      2. FFmpeg overlay .ass -> final video
+    """
+    raw_path = temp_dir / f"{out_path.stem}_raw.mp4"
+    duration = clip_end - clip_start
+
+    # Timeline relatif ke clip_start = 0
+    # (prepare_smart_crop udah return relatif, jadi ga perlu adjust)
+    if not timeline:
+        # Fallback: static center
+        cap = cv2.VideoCapture(str(video_path))
+        fw = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        fh = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
+        crop_w = int(fh * 9 / 16)
+        center_x = max(0, (fw - crop_w) // 2)
+        timeline = [(0.0, center_x)]
+
+    # Step 1: Frame-by-frame render (crop only)
+    print(f"    🎬 Frame render: {out_path.stem} ({duration:.1f}s)...")
+    try:
+        # Extract segment dulu (clip_start to clip_end)
+        seg_path = temp_dir / f"{out_path.stem}_seg.mp4"
+        cmd_seg = [
+            "ffmpeg", "-y",
+            "-ss", f"{clip_start:.2f}",
+            "-to", f"{clip_end:.2f}",
+            "-i", str(video_path),
+            "-c", "copy",
+            str(seg_path),
+        ]
+        r = run(cmd_seg, silent=True)
+        if r.returncode != 0:
+            print(f"    ❌ Gagal extract segmen")
+            return False
+
+        render_frame_by_frame(
+            video_path=seg_path,
+            output_path=raw_path,
+            timeline_sec=timeline,
+            output_w=OUTPUT_W,
+            output_h=OUTPUT_H,
+            fps=fps,
+            audio_from_source=True,
+            crf=ENCODE_CRF,
+            preset="veryfast",
+        )
+        # Cleanup segment
+        try:
+            seg_path.unlink()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"    ❌ Frame render gagal: {e}")
+        return False
+
+    # Step 2: Overlay .ass
+    ass_escaped = str(ass_path).replace("\\", "/").replace(":", "\\:")
+    cmd_ass = [
+        "ffmpeg", "-y",
+        "-i", str(raw_path),
+        "-vf", f"ass='{ass_escaped}'",
+        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
+        "-threads", str(ENCODE_THREADS),
+        "-pix_fmt", "yuv420p",
+        "-c:a", "copy",
+        "-movflags", "+faststart",
+        str(out_path),
+    ]
+    r = run(cmd_ass, silent=True)
+    if r.returncode != 0:
+        print(f"    ❌ Overlay .ass gagal")
+        print(r.stderr[-300:])
+        return False
+
+    # Cleanup raw
+    try:
+        raw_path.unlink()
+    except Exception:
+        pass
+
+    return True
+
 def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, cfg=None):
-    """Render 1 klip tanpa hook (mode lama)."""
+    """Render 1 klip tanpa hook (mode lama) — pake frame-by-frame renderer."""
     duration = clip_end - clip_start
     ass_path = temp_dir / f"{out_path.stem}.ass"
     write_ass(words, clip_start, clip_end, ass_path)
 
-    ass_escaped = str(ass_path).replace("\\", "/").replace(":", "\\:")
-    crop_filter, _ = prepare_smart_crop(
+    # Siapin timeline dari smart reframe
+    timeline, _ = prepare_smart_crop(
         video_path=video_path,
         clip_start=clip_start,
         clip_end=clip_end,
@@ -426,32 +505,19 @@ def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, 
         out_stem=out_path.stem,
         cfg=cfg or {},
     )
-    vf = (
-        f"{crop_filter},"
-        f"scale={OUTPUT_W}:{OUTPUT_H},"
-        f"ass='{ass_escaped}'"
-    )
 
-    cmd = [
-        "ffmpeg", "-y",
-        "-ss", f"{clip_start:.2f}",
-        "-to", f"{clip_end:.2f}",
-        "-i", str(video_path),
-        "-vf", vf,
-        "-c:v", "libx264", "-preset", ENCODE_PRESET, "-crf", str(ENCODE_CRF),
-        "-threads", str(ENCODE_THREADS),
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart",
-        str(out_path),
-    ]
+    # Render pakai helper (frame-by-frame + .ass overlay)
     print(f"    🎬 Render: {out_path.name} ({duration:.1f}s)...")
-    result = run(cmd, silent=True)
-    if result.returncode != 0:
-        print(f"    ❌ Gagal render {out_path.name}")
-        print(result.stderr[-300:])
-        return False
-    return True
+    return render_with_timeline(
+        video_path=video_path,
+        clip_start=clip_start,
+        clip_end=clip_end,
+        timeline=timeline,
+        ass_path=ass_path,
+        out_path=out_path,
+        temp_dir=temp_dir,
+        fps=30,
+    )
 
 def process_one(video: Path, output_dir: Path, temp_dir: Path) -> tuple[int, int]:
     """Process 1 video. Return (success_clips, total_clips)."""

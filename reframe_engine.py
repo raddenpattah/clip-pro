@@ -1,6 +1,4 @@
-"""
-reframe_engine.py - Generate crop timeline + FFmpeg sendcmd script.
-"""
+"""reframe_engine.py - Generate crop timeline buat frame-by-frame renderer."""
 from __future__ import annotations
 from pathlib import Path
 from dataclasses import dataclass
@@ -139,31 +137,6 @@ def smooth_timeline(
     return out
 
 
-def write_sendcmd(timeline: list[CropSample], path: Path) -> None:
-    lines = []
-    for s in timeline:
-        lines.append(f"{s.t:.3f} crop x {s.x};")
-    path.write_text("\n".join(lines) + "\n")
-
-
-def build_crop_filter(
-    fw: int,
-    fh: int,
-    sendcmd_path: Optional[Path],
-    smart: bool,
-) -> str:
-    if not smart or sendcmd_path is None:
-        return "crop=ih*9/16:ih"
-
-    p = str(sendcmd_path).replace("\\", "/").replace(":", "\\:")
-    crop_w = int(fh * 9 / 16)
-    center_x = max(0, (fw - crop_w) // 2)
-    return (
-        f"crop=w={crop_w}:h={fh}:x={center_x}:y=0,"
-        f"sendcmd=f='{p}'"
-    )
-
-
 def prepare_smart_crop(
     video_path: Path,
     clip_start: float,
@@ -174,7 +147,7 @@ def prepare_smart_crop(
     cfg: dict,
 ) -> tuple[str, bool]:
     if not cfg.get("reframe", {}).get("enabled", False):
-        return "crop=ih*9/16:ih", False
+        return [], False
 
     try:
         cap = cv2.VideoCapture(str(video_path))
@@ -182,7 +155,7 @@ def prepare_smart_crop(
         fh = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         cap.release()
         if fw == 0 or fh == 0:
-            return "crop=ih*9/16:ih", False
+            return [], False
 
         rcfg = cfg["reframe"]
         # Prioritas: engine eksplisit, fallback ke tracking mode
@@ -206,7 +179,7 @@ def prepare_smart_crop(
 
         if not timeline:
             print("   ⚠️  Smart reframe: timeline kosong, fallback static")
-            return "crop=ih*9/16:ih", False
+            return [], False
 
         sm = rcfg.get("smoothing", {})
         timeline = smooth_timeline(
@@ -215,14 +188,13 @@ def prepare_smart_crop(
             deadzone_px=sm.get("deadzone_px", 40),
         )
 
-        sendcmd_path = temp_dir / f"{out_stem}.sendcmd.txt"
-        write_sendcmd(timeline, sendcmd_path)
 
-        vf_crop = build_crop_filter(fw, fh, sendcmd_path, smart=True)
+        # Convert CropSample -> (time_sec, x)
+        timeline_out = [(s.t, s.x) for s in timeline]
         faces_seen = sum(1 for s in timeline if s.face_seen)
         print(f"   🎯 Smart reframe: {len(timeline)} samples, {faces_seen} berisi wajah")
-        return vf_crop, True
+        return timeline_out, True
 
     except Exception as e:
         print(f"   ⚠️  Smart reframe gagal ({e}), fallback static")
-        return "crop=ih*9/16:ih", False
+        return [], False

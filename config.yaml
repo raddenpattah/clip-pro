@@ -120,6 +120,6 @@ reframe:
   #   dual   - 2 orang (interview, podcast 2)
   #   multi  - 3-4 orang (panel, podcast 4) 
   #   auto   - fallback (deteksi otomatis)
-  engine: multi
+  engine: single    # single = fokus 1 wajah (paling stabil buat podcast multi-orang)
   tracking: single    # (legacy, diabaikan kalau engine di-set)
   sample_fps: 10
