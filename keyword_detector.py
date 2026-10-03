@@ -115,6 +115,14 @@ def make_clips_from_hits(
         min_end = max(start + min_duration, target_end - tolerance)
         max_end = min(total_duration, start + max_duration, target_end + tolerance)
 
+        # Clamp: max_end ga boleh > total_duration, min_end ga boleh > max_end
+        max_end = min(max_end, total_duration)
+        if min_end > max_end:
+            min_end = max_end
+        # Kalau target_end > total_duration, clamp
+        if target_end > total_duration:
+            target_end = total_duration
+
         # === EDGE CASE: keyword dekat akhir video ===
         # Kalau max_end - start < min_duration, mundurin start biar cukup panjang
         if max_end - start < min_duration:
@@ -126,6 +134,14 @@ def make_clips_from_hits(
                 target_end = start + target_duration
                 min_end = max(start + min_duration, target_end - tolerance)
                 max_end = min(total_duration, start + max_duration, target_end + tolerance)
+
+                # Clamp lagi
+                max_end = min(max_end, total_duration)
+                if min_end > max_end:
+                    min_end = max_end
+                if target_end > total_duration:
+                    target_end = total_duration
+
                 print(f"   ⚠️  Keyword '{h['keyword']}' dekat akhir video — "
                       f"start digeser dari {h['time'] - context_before:.0f}s → {start}s")
             else:
