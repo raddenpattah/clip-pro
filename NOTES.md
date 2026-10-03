@@ -363,3 +363,36 @@ python3 clipforge.py input.mp4 --engine auto
 - 06d79db: CLI --engine
 - c9f3c10: multi-engine reframe
 - 49d4126, 6dcd4c8: false positive fix + NOTES
+
+## Rencana UI: Hook Config (Future)
+
+### Masalah
+- Hook text position (atas) kadang ketutup kepala orang
+- Box background kadang terlalu tebal
+- Tuning manual di YAML ga user-friendly
+- Butuh preview visual
+
+### Solusi: UI Config Hook
+Menu di UI (Gradio/Web) buat atur:
+- [ ] Posisi text (atas/tengah/bawah)
+- [ ] Font (family, size, weight)
+- [ ] Warna text
+- [ ] Outline (ada/ga, tebal, warna)
+- [ ] Box background (ada/ga, warna, padding, opacity)
+- [ ] Preview real-time
+- [ ] Preset (TikTok, Reels, dll)
+- [ ] Auto-position (hindari wajah)
+
+### Target User
+Content creator yang ga mau edit YAML.
+Klik-klik, preview, save preset.
+
+### Status
+- Belum diimplementasi
+- Nunggu UI framework (Gradio/Next.js)
+- Pri: MEDIUM (setelah core works)
+
+### Catatan
+- Hook sekarang: kuning + outline hitam + box hitam 50%
+- Masalah: posisi atas ketutup kepala (kalau orang duduk di kursi)
+- Solusi sementara: box_enabled false / box_padding tipis

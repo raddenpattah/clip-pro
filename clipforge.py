@@ -45,6 +45,8 @@ def parse_args():
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--engine", choices=["single", "dual", "multi", "auto"],
                     help="Reframe engine (override config.yaml)")
+    ap.add_argument("--batch", metavar="FOLDER",
+                    help="Batch mode: proses semua video di folder")
     return ap.parse_args()
 
 def load_runtime_config(args):
@@ -403,32 +405,8 @@ def _render_single(video_path, clip_start, clip_end, words, out_path, temp_dir, 
         return False
     return True
 
-def main():
-    args = parse_args()
-
-    # Auto-tune config dari hardware (kecuali --no-probe)
-    # --probe-only akan exit di dalam sini
-    runtime_cfg = load_runtime_config(args)
-    if runtime_cfg:
-        builtins.CFG = runtime_cfg
-    else:
-        builtins.CFG = {}
-
-    # Baru cek input (setelah probe-only handled)
-    if not args.input:
-        print("Usage: python3 clipforge.py <video.mp4> [--yes] [--probe-only] [--no-probe]")
-        sys.exit(1)
-
-    video = Path(args.input)
-    if not video.exists():
-        print(f"❌ File tidak ditemukan: {video}")
-        sys.exit(1)
-
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
-    temp_dir = Path("temp")
-    temp_dir.mkdir(exist_ok=True)
-
+def process_one(video: Path, output_dir: Path, temp_dir: Path) -> tuple[int, int]:
+    """Process 1 video. Return (success_clips, total_clips)."""
     # 1. Ambil durasi
     total_dur = get_duration(video)
     print(f"📹 Video: {video.name}")
@@ -536,6 +514,89 @@ def main():
                 save_title(hook_for_clip, title_path)
 
     print(f"\n🎉 Selesai! {success}/{len(clips)} klip di folder output/")
+    return success, len(clips)
+
+
+def run_batch(folder: Path, output_dir: Path, temp_dir: Path) -> None:
+    """Batch mode: proses semua video di folder."""
+    # Cari semua video
+    exts = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
+    videos = sorted([
+        f for f in folder.iterdir()
+        if f.is_file() and f.suffix.lower() in exts
+    ])
+
+    if not videos:
+        print(f"❌ Ga ada video di {folder}")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"🎬 BATCH MODE: {len(videos)} video ditemukan di {folder}")
+    print(f"{'='*60}\n")
+
+    results = []
+    for i, video in enumerate(videos, 1):
+        print(f"\n{'='*60}")
+        print(f"[{i}/{len(videos)}] {video.name}")
+        print(f"{'='*60}")
+        try:
+            success, total = process_one(video, output_dir, temp_dir)
+            results.append((video.name, success, total, None))
+        except Exception as e:
+            print(f"\n❌ Gagal proses {video.name}: {e}")
+            results.append((video.name, 0, 0, str(e)))
+
+    # Summary
+    print(f"\n{'='*60}")
+    print(f"🎉 BATCH SELESAI")
+    print(f"{'='*60}")
+    total_clips = 0
+    success_count = 0
+    for name, success, total, err in results:
+        if err:
+            print(f"  ❌ {name}: GAGAL ({err[:50]})")
+        else:
+            print(f"  ✅ {name}: {success}/{total} klip")
+            total_clips += success
+            success_count += 1
+    print(f"\n   Sukses: {success_count}/{len(videos)} video")
+    print(f"   Total klip: {total_clips}")
+
+
+def main():
+    args = parse_args()
+
+    # Auto-tune config dari hardware (kecuali --no-probe)
+    runtime_cfg = load_runtime_config(args)
+    builtins.CFG = runtime_cfg if runtime_cfg else {}
+
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
+    temp_dir = Path("temp")
+    temp_dir.mkdir(exist_ok=True)
+
+    # === BATCH MODE ===
+    if args.batch:
+        folder = Path(args.batch)
+        if not folder.exists() or not folder.is_dir():
+            print(f"❌ Folder tidak ditemukan: {folder}")
+            sys.exit(1)
+        run_batch(folder, output_dir, temp_dir)
+        return
+
+    # === SINGLE MODE ===
+    if not args.input:
+        print("Usage: python3 clipforge.py <video.mp4> [--yes] [--probe-only] [--no-probe] [--engine X]")
+        print("       python3 clipforge.py --batch <folder> [--engine X]")
+        sys.exit(1)
+
+    video = Path(args.input)
+    if not video.exists():
+        print(f"❌ File tidak ditemukan: {video}")
+        sys.exit(1)
+
+    process_one(video, output_dir, temp_dir)
+
 
 if __name__ == "__main__":
     main()
