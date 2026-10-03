@@ -1,125 +1,78 @@
-# ClipForge Configuration
-# Edit file ini aja, gak perlu sentuh code
-
-# ===== CLIP SETTINGS =====
 clip:
-  duration: 45          # durasi ideal tiap klip (detik)
-  min_duration: 30      # durasi minimum klip
-  max_duration: 60      # durasi maksimum klip
-  tolerance: 5          # toleransi cari jeda natural (±detik)
-  context_before: 5     # berapa detik sebelum keyword
-  max_clips: 5          # maksimal klip per video
-
-# ===== WHISPER SETTINGS =====
+  duration: 45
+  min_duration: 30
+  max_duration: 60
+  tolerance: 5
+  context_before: 5
+  max_clips: 5
 whisper:
-  model: base           # tiny / base / small / medium
-  language: id          # id / en / auto
+  model: base
+  language: id
   beam_size: 5
   vad_filter: true
-  initial_prompt: "Video tutorial bahasa Indonesia. Istilah umum: AI, ChatGPT, TikTok, YouTube, affiliate, monetisasi, bisnis online, konten kreator, viral, algoritma, engagement, clickbait, hooks, call to action."
-
-# ===== OUTPUT SETTINGS =====
+  initial_prompt: 'Video tutorial bahasa Indonesia. Istilah umum: AI, ChatGPT, TikTok,
+    YouTube, affiliate, monetisasi, bisnis online, konten kreator, viral, algoritma,
+    engagement, clickbait, hooks, call to action.'
 output:
   width: 1080
   height: 1920
   font: Montserrat Black
   font_size: 90
-  font_color: "&H00FFFFFF"     # putih
-  outline_color: "&H00000000"  # hitam
+  font_color: '&H00FFFFFF'
+  outline_color: '&H00000000'
   outline_size: 6
-  margin_vertical: 400          # jarak dari bawah (px)
-
-# ===== KEYWORD DETECTION =====
-# Bobot: makin tinggi = makin prioritas
+  margin_vertical: 400
 keywords:
-  # === Tier 1: Signal paling kuat ===
   rahasia: 10
   jangan lupa: 10
   penting: 10
-  "100 juta": 9
+  100 juta: 9
   miliar: 9
-
-  # === Tier 2: Actionable ===
   tips: 8
   trik: 8
   hack: 8
-  "cara gampang": 7
-  "cara cepat": 7
-
-  # === Tier 3: Value/konsep ===
+  cara gampang: 7
+  cara cepat: 7
   gratis: 6
   sukses: 6
   gagal: 6
-  "pengen kaya": 6
-  "dapet duit": 6
-
-  # === Tier 4: Kesimpulan ===
+  pengen kaya: 6
+  dapet duit: 6
   kesimpulan: 5
   intinya: 5
   kuncinya: 5
-
-  # === Frasa spesifik (bukan kata tunggal) ===
-  "tips pertama": 6
-  "tips kedua": 6
-  "hal penting": 7
-  "poin penting": 8
-  "kesimpulan akhir": 7
-  "langkah pertama": 6
-
-# ===== HOOK / OPENING =====
+  tips pertama: 6
+  tips kedua: 6
+  hal penting: 7
+  poin penting: 8
+  kesimpulan akhir: 7
+  langkah pertama: 6
 hook:
   enabled: true
-  duration: 5                    # durasi opening (detik, max 5)
-
-  # Sumber teks hook:
-  #   "manual"     -> pakai text_manual di bawah
-  #   "transcript" -> ambil kalimat pertama dari transkrip
-  #   "none"       -> gak ada teks hook
-  text_source: "manual"
-
-  # Kalau text_source = "manual", pakai ini
-  text_manual: "TONTON SAMPE HABIS! 🔥"
-
-  # Apply ke semua klip atau cuma klip pertama?
-  apply_to: "all"                # "all" atau "first_only"
-
-  # Style teks hook
+  duration: 5
+  text_source: manual
+  text_manual: BUSET CUMA GINI DOANG ANJRIT
+  apply_to: all
   font_size: 80
-  font_color: "&H0000FFFF"       # kuning (BGR)
-  outline_color: "&H00000000"    # hitam
+  font_color: '&H0000FFFF'
+  outline_color: '&H00000000'
   outline_size: 4
-  position: 2                    # 8=atas, 5=tengah, 2=bawah (TikTok/Reels)
-  margin_top: 590                # jarak dari ATAS (px) - makin gede makin TURUN ke bawah
-
-  # Background box (opsional)
+  position: 2
+  margin_top: 590
   box_enabled: true
-  box_color: "&H80000000"        # hitam transparan 50%
-  box_padding: 20                # padding dalam box (px)
-
-  # Output metadata (judul video)
-  save_title: true               # simpan judul ke file .txt
-
-# ===== DICTIONARY / NORMALIZE =====
+  box_color: '&H80000000'
+  box_padding: 20
+  save_title: true
 dictionary:
-  enabled: true                # aktifkan auto-normalize transkrip
-  auto_log: true               # log kata baru ke unknown_words.log
-  min_frequency: 2             # minimal frekuensi biar di-log (kurangi spam)
-  path: "dictionary/kamus.json"
-
-# ===== REFRAME OVERRIDE =====
-# Comment out / hapus kalau mau pakai auto-tuning dari system_probe.
-# Uncomment kalau mau override manual.
+  enabled: true
+  auto_log: true
+  min_frequency: 2
+  path: dictionary/kamus.json
 reframe:
   enabled: true
-  # Smoothing: atur kehalusan crop tracking
   smoothing:
-    alpha: 0.6          # makin kecil makin halus, makin besar makin responsif
-    deadzone_px: 15     # toleransi gerak sebelum crop ikut gerak
-  # Engine: pilih sesuai tipe video
-  #   single - 1 orang (talking head, motivasi)
-  #   dual   - 2 orang (interview, podcast 2)
-  #   multi  - 3-4 orang (panel, podcast 4) 
-  #   auto   - fallback (deteksi otomatis)
-  engine: single    # single = fokus 1 wajah (paling stabil buat podcast multi-orang)
-  tracking: single    # (legacy, diabaikan kalau engine di-set)
+    alpha: 0.6
+    deadzone_px: 15
+  engine: single
+  tracking: single
   sample_fps: 10

@@ -541,3 +541,35 @@ reframe:
 2. Test smooth crop di PC (jauh lebih cepet)
 3. Production konten
 4. (Optional) Active speaker detection
+
+## Gradio UI (2026-10-03 malam)
+
+### File
+- gradio_app.py (159 baris)
+
+### Fitur
+- Upload video (drag & drop)
+- Pilih engine (single/dual/multi/auto)
+- Atur hook text + posisi
+- Process button
+- Log real-time
+- Preview klip
+
+### Cara Pakai
+python3 gradio_app.py
+# Buka http://localhost:7860
+
+### Known Issue
+- Timeout 30 menit (perlu naikin ke 2 jam)
+- Video 60 detik = ~22 menit (laptop lemah)
+
+### Belum
+- Progress bar visual
+- Download button
+- Preview gallery (multi klip)
+- Custom CSS (biar ganteng)
+
+### Next
+- Fix timeout (30 detik)
+- Test UI full
+- Polish UI (kalau perlu)
